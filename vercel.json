@@ -1,11 +1,5 @@
 {
-  "functions": {
-    "api/token.js": {
-      "runtime": "edge"
-    }
-  },
   "rewrites": [
-    { "source": "/api/token", "destination": "/api/token" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
