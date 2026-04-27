@@ -19,12 +19,18 @@ export default async function handler(req) {
 
   // ── ANTHROPIC AI PROXY ─────────────────────────────────────────
   if (action === 'ai') {
+    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
+    if (!ANTHROPIC_KEY) {
+      return new Response(JSON.stringify({ error: 'API key not configured' }), {
+        status: 500, headers: corsHeaders
+      });
+    }
     const body = await req.json();
     const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'x-api-key': ANTHROPIC_KEY,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify(body),
