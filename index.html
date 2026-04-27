@@ -1053,56 +1053,99 @@ async function generateCoverImage(){
   const noteEl=document.getElementById('genImgNote');
   const beforeBox=document.getElementById('beforeImg');
 
-  btn.textContent='Generando imagen...';
+  btn.textContent='Analizando foto...';
   btn.disabled=true;
   result.style.display='block';
 
   // Mostrar foto ANTES (actual)
-  if(currentPub.thumbnail&&!currentPub.thumbnail.includes('noimg')){
+  const hasPic=currentPub.thumbnail&&!currentPub.thumbnail.includes('noimg');
+  if(hasPic){
     beforeBox.innerHTML=`<img src="${currentPub.thumbnail}" style="width:100%;height:100%;object-fit:cover">`;
   } else {
     beforeBox.innerHTML='<div style="color:var(--text-muted);font-size:.7rem;text-align:center;padding:1rem">Sin foto actual</div>';
   }
 
-  afterBox.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:.65rem;color:var(--text-muted)">Generando...</div></div>';
+  afterBox.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:.65rem;color:var(--text-muted)">Analizando tu foto...</div></div>';
 
   const cat=detectCategory(currentPub.title||'');
   const name=(currentPub.title||'product').substring(0,50);
 
-  // Prompt optimizado por categoría siguiendo reglas ML
-  const prompts={
-    celular:`${name}, professional e-commerce product photo, pure white background, 3/4 angle view, screen turned on showing interface, studio lighting, no shadows, sharp focus, product fills 85% of frame, no watermarks, no text overlay, high resolution`,
-    tecnologia:`${name}, professional e-commerce product photo, pure white background, 3/4 angle view, all ports visible, studio lighting, no shadows, sharp focus, product fills 85% of frame, no watermarks, no text overlay, high resolution`,
-    ropa:`${name}, professional e-commerce fashion photo, white background, flat lay or mannequin, perfectly ironed, uniform soft lighting, no shadows, true colors no filter, product fills 80% of frame, no watermarks`,
-    hogar:`${name}, professional e-commerce product photo, pure white background, centered front view showing dimensions, studio lighting, no shadows, product fills 85% of frame, no watermarks, no text overlay`,
-    belleza:`${name}, professional e-commerce beauty product photo, pure white background, front label clearly visible, soft studio lighting, no reflections, product fills 80% of frame, no watermarks, no text overlay`,
-    general:`${name}, professional e-commerce product photo, pure white background, centered 3/4 angle, studio lighting, no shadows, sharp focus, product fills 85% of frame, no watermarks, no text overlay, high resolution`
-  };
-
-  const prompt=prompts[cat]||prompts.general;
-
   try{
-    // Pollinations.ai — 100% gratis, sin API key, sin registro
+    let prompt='';
+
+    // Si tiene foto, analizarla con Claude Vision para extraer descripción exacta
+    if(hasPic){
+      afterBox.querySelector('div div:last-child') && (afterBox.querySelector('div div:last-child').textContent='Analizando tu foto con IA...');
+      try{
+        // Convertir imagen a base64 via canvas
+        const imgEl=new Image();
+        imgEl.crossOrigin='anonymous';
+        await new Promise((resolve,reject)=>{
+          imgEl.onload=resolve;
+          imgEl.onerror=reject;
+          imgEl.src=currentPub.thumbnail+'?t='+Date.now();
+        });
+        const canvas=document.createElement('canvas');
+        canvas.width=256;canvas.height=256;
+        const ctx=canvas.getContext('2d');
+        ctx.drawImage(imgEl,0,0,256,256);
+        const base64=canvas.toDataURL('image/jpeg',0.7).split(',')[1];
+
+        // Enviar a Claude para analizar la foto y generar prompt mejorado
+        const aiRes=await fetch('/api/token?action=ai',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({
+            model:'claude-sonnet-4-6',
+            max_tokens:300,
+            messages:[{
+              role:'user',
+              content:[
+                {type:'image',source:{type:'base64',media_type:'image/jpeg',data:base64}},
+                {type:'text',text:`This is a product photo for Mercado Libre listing: "${currentPub.title}". 
+Analyze what you see in this image and create an improved product photography prompt.
+The improved photo must have: pure white background, professional studio lighting, no shadows, product fills 85% of frame, 3/4 angle, sharp focus, no text or watermarks.
+Respond ONLY with the English image generation prompt, nothing else. Keep it under 100 words. Be very specific about the exact product you see.`}
+              ]
+            }]
+          })
+        });
+        if(aiRes.ok){
+          const aiData=await aiRes.json();
+          const aiText=aiData.content&&aiData.content[0]&&aiData.content[0].text||'';
+          if(aiText.length>20) prompt=aiText.trim();
+        }
+      }catch(e){console.warn('Vision analysis failed, using title-based prompt:',e);}
+    }
+
+    // Si no se pudo analizar la foto, usar prompt basado en título
+    if(!prompt){
+      const baseStyle='professional product photography, pure white background, studio lighting, no shadows, sharp focus, no watermarks, no text, high resolution, e-commerce style, product fills 85% of frame, 3/4 angle view';
+      prompt=`${name}, ${baseStyle}`;
+    }
+
+    console.log('Final prompt:', prompt);
+    afterBox.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:.65rem;color:var(--text-muted)">Generando imagen mejorada...</div></div>';
+
+    // Generar imagen mejorada con Pollinations
     const encodedPrompt=encodeURIComponent(prompt);
     const seed=Math.floor(Math.random()*99999);
-    const imgUrl=`https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&seed=${seed}&nologo=true&enhance=true`;
+    const imgUrl=`https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&seed=${seed}&nologo=true&enhance=true&model=flux`;
 
-    // Cargar imagen directamente
     const img=new Image();
     img.crossOrigin='anonymous';
     img.onload=()=>{
       afterBox.innerHTML=`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover">`;
-      noteEl.textContent='Imagen generada con IA — úsala como referencia visual para tomar o editar tu foto de portada real.';
-      btn.textContent='✦ Regenerar imagen';
+      noteEl.textContent='Imagen mejorada con IA basada en tu foto actual — úsala como referencia para tu portada real.';
+      btn.textContent='✦ Regenerar';
       btn.disabled=false;
     };
     img.onerror=()=>{
-      afterBox.innerHTML='<div style="padding:.75rem;font-size:.7rem;color:var(--danger);text-align:center">Error al cargar imagen. Intenta de nuevo.</div>';
+      afterBox.innerHTML='<div style="padding:.75rem;font-size:.7rem;color:var(--danger);text-align:center">Error al generar. Intenta de nuevo.</div>';
       btn.textContent='✦ Reintentar';
       btn.disabled=false;
     };
     img.src=imgUrl;
-    // Retornar temprano — el resultado se maneja en onload/onerror
     return;
   }catch(e){
     console.error('generateCoverImage error:',e);
