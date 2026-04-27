@@ -759,47 +759,94 @@ function generateSuggestions(p){
 }
 
 async function applyChanges(){
-  if(!currentPub||!accessToken)return;
+  if(!currentPub||!accessToken){showToast('Inicia sesión primero');return;}
   const btn=document.getElementById('applyBtn');
   const titleVal=document.getElementById('titleInput').value.trim();
   const priceVal=document.getElementById('priceInput').value.trim();
   const descVal=document.getElementById('descInput').value.trim();
   const sug=generateSuggestions(currentPub);
+
+  // Construir body solo con campos que cambian
   const body={};
-  // Título: usar el editado manualmente, o el sugerido, siempre máx 60 chars
-  const rawTitle=titleVal||sug.title;
-  const newTitle=rawTitle.substring(0,60).trim();
-  if(newTitle&&newTitle!==currentPub.title)body.title=newTitle;
-  // Precio: solo si es número válido y distinto al actual
+  const rawTitle=(titleVal||sug.title||currentPub.title).substring(0,60).trim();
+  if(rawTitle && rawTitle!==currentPub.title) body.title=rawTitle;
   if(priceVal){
-    const newPrice=parseFloat(priceVal);
-    if(!isNaN(newPrice)&&newPrice>0&&newPrice!==parseFloat(currentPub.price))body.price=newPrice;
+    const np=parseFloat(priceVal);
+    if(!isNaN(np)&&np>0) body.price=np;
   }
-  const finalDesc=descVal||document.getElementById('dSugDesc').textContent.trim();
-  if(!Object.keys(body).length&&!finalDesc){showToast('No hay cambios para aplicar');return;}
-  console.log('Enviando a ML:', JSON.stringify(body));
-  btn.textContent='Aplicando en Mercado Libre...';btn.className='btn-apply applying';
+  const finalDesc=(descVal||document.getElementById('dSugDesc').textContent||'').trim();
+
+  if(!Object.keys(body).length && !finalDesc){
+    showToast('No hay cambios para aplicar');return;
+  }
+
+  btn.textContent='Aplicando...';btn.className='btn-apply applying';
+  console.log('=== APLICANDO EN ML ===');
+  console.log('Item ID:', currentPub.id);
+  console.log('Body:', JSON.stringify(body));
+  console.log('Desc length:', finalDesc.length);
+
   try{
-    let errors=[];
+    let ok=true;
+
+    // 1. Actualizar título y/o precio
     if(Object.keys(body).length){
-      const r=await mlPut(`/items/${currentPub.id}`, body);
-      if(r.error||r.status==='error') errors.push('Título/Precio: '+(r.message||r.error));
-      else { if(body.title)currentPub.title=body.title; if(body.price)currentPub.price=body.price; }
+      // Intentar con título primero, si falla por family_name intentar solo precio
+      const r=await mlPut('/items/'+currentPub.id, body);
+      console.log('Respuesta título/precio:', JSON.stringify(r));
+      const isFamilyErr=r.message&&r.message.includes('family_name');
+      if(isFamilyErr && body.title && body.price){
+        // Publicación en catálogo: no permite cambiar título, intentar solo precio
+        const r2=await mlPut('/items/'+currentPub.id, {price:body.price});
+        console.log('Respuesta solo precio:', JSON.stringify(r2));
+        if(r2.error||r2.cause){
+          showToast('Solo precio: error — '+( r2.message||r2.error));
+          ok=false;
+        } else {
+          currentPub.price=body.price;
+          showToast('Título no modificable (catálogo ML). Precio actualizado.');
+        }
+      } else if(isFamilyErr && body.title && !body.price){
+        // Solo título y está en catálogo — no se puede hacer nada con el título
+        showToast('Este producto está en catálogo ML — el título no se puede cambiar.');
+      } else if(r.error||r.cause||(r.status&&r.status!==200)){
+        const msg=r.message||r.error||(r.cause&&r.cause[0]&&r.cause[0].description)||'Error';
+        showToast('Error: '+msg);
+        console.error('Error ML:', msg);
+        ok=false;
+      } else {
+        if(body.title) currentPub.title=body.title;
+        if(body.price) currentPub.price=body.price;
+      }
     }
-    if(finalDesc){
-      const r2=await mlPut(`/items/${currentPub.id}/description`, {plain_text:finalDesc});
-      if(r2.error||r2.status==='error') errors.push('Descripción: '+(r2.message||r2.error));
+
+    // 2. Actualizar descripción (llamada separada en ML)
+    if(finalDesc && finalDesc.length>10){
+      const r2=await mlPut('/items/'+currentPub.id+'/description', {plain_text:finalDesc});
+      console.log('Respuesta descripción:', JSON.stringify(r2));
+      if(r2.error || r2.cause){
+        const msg2=r2.message||r2.error||'Error en descripción';
+        showToast('Error descripción: '+msg2);
+        console.error('Error desc ML:', msg2);
+        ok=false;
+      }
     }
-    if(errors.length){
-      btn.textContent='Error al aplicar';btn.className='btn-apply';
-      showToast('Error: '+errors[0]);
-      console.error('ML errors:', errors);
-    } else {
-      btn.textContent='✓ Aplicado en Mercado Libre';btn.className='btn-apply applied';
-      showToast('¡Publicación actualizada en Mercado Libre!');
+
+    if(ok){
+      btn.textContent='✓ Aplicado en Mercado Libre';
+      btn.className='btn-apply applied';
+      showToast('¡Publicación actualizada correctamente!');
       renderPubList();
+    } else {
+      btn.textContent='Revisar errores';
+      btn.className='btn-apply';
     }
-  }catch(e){btn.textContent='Error — intenta de nuevo';btn.className='btn-apply';showToast('Error: '+e.message);console.error(e);}
+  }catch(e){
+    console.error('Exception:', e);
+    btn.textContent='Error — intenta de nuevo';
+    btn.className='btn-apply';
+    showToast('Error: '+e.message);
+  }
 }
 
 function revertChanges(){
