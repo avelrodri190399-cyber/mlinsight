@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>MLInsight — KYMDREAMS</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;500;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ml-yellow:#FFE600;--ml-blue:#3483FA;--ml-dark:#1A1A2E;
+  --surface:#16213E;--surface2:#0F3460;--text:#F0F0F0;--text-muted:#8899AA;
+  --success:#00D68F;--warn:#FFB800;--danger:#FF4D6D;
+  --radius:14px;--radius-sm:8px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html,body{height:100%;overflow:hidden}
+body{font-family:'DM Sans',sans-serif;background:var(--ml-dark);color:var(--text);display:flex;flex-direction:column}
+
+/* LOGIN */
+#loginScreen{position:fixed;inset:0;background:var(--ml-dark);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;padding:2rem}
+.login-logo{font-family:'Syne',sans-serif;font-size:2rem;font-weight:700;color:var(--ml-yellow);letter-spacing:-1px;margin-bottom:.25rem}
+.login-sub{font-size:.85rem;color:var(--text-muted);margin-bottom:3rem}
+.login-card{width:100%;max-width:380px;background:var(--surface);border:1px solid rgba(255,255,255,.08);border-radius:var(--radius);padding:2rem}
+.login-title{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:600;margin-bottom:.4rem}
+.login-desc{font-size:.8rem;color:var(--text-muted);margin-bottom:1.5rem;line-height:1.5}
+.btn-ml{width:100%;padding:14px;border:none;border-radius:var(--radius-sm);background:var(--ml-yellow);color:#1A1A2E;font-family:'Syne',sans-serif;font-size:.95rem;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;transition:transform .15s,opacity .15s;text-decoration:none}
+.btn-ml:hover{opacity:.9;transform:translateY(-1px)}
+.ml-icon{width:22px;height:22px;background:#1A1A2E;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--ml-yellow)}
+.login-note{font-size:.72rem;color:var(--text-muted);margin-top:1.2rem;text-align:center;line-height:1.5}
+.divider{border:none;border-top:1px solid rgba(255,255,255,.06);margin:1.5rem 0}
+.demo-btn{width:100%;padding:12px;border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-sm);background:transparent;color:var(--text-muted);font-size:.85rem;cursor:pointer;transition:background .15s,color .15s}
+.demo-btn:hover{background:rgba(255,255,255,.05);color:var(--text)}
+
+/* CALLBACK */
+#callbackScreen{position:fixed;inset:0;background:var(--ml-dark);display:none;flex-direction:column;align-items:center;justify-content:center;z-index:100;gap:1rem}
+.loading-dots{display:inline-flex;gap:4px}
+.loading-dots span{width:8px;height:8px;border-radius:50%;background:var(--ml-yellow);animation:dot 1.2s infinite}
+.loading-dots span:nth-child(2){animation-delay:.2s}
+.loading-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dot{0%,80%,100%{opacity:.2}40%{opacity:1}}
+
+/* APP */
+#app{display:none;flex-direction:column;height:100%}
+#app.visible{display:flex}
+
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.06);flex-shrink:0}
+.topbar-logo{font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:700;color:var(--ml-yellow)}
+.topbar-user{display:flex;align-items:center;gap:8px}
+.user-avatar{width:32px;height:32px;border-radius:50%;background:var(--ml-yellow);color:#1A1A2E;font-family:'Syne',sans-serif;font-size:.7rem;font-weight:700;display:flex;align-items:center;justify-content:center}
+.user-name{font-size:.8rem;color:var(--text-muted);display:none}
+@media(min-width:600px){.user-name{display:block}}
+.conn-badge{font-size:.65rem;padding:2px 7px;border-radius:20px;background:rgba(0,214,143,.12);color:var(--success);border:1px solid rgba(0,214,143,.2)}
+
+.main{display:flex;flex:1;overflow:hidden;min-height:0}
+
+/* SIDEBAR */
+.sidebar{width:260px;flex-shrink:0;border-right:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;overflow:hidden;transition:transform .3s}
+@media(max-width:768px){.sidebar{position:fixed;left:0;top:0;bottom:0;z-index:50;background:var(--ml-dark);border-right:1px solid rgba(255,255,255,.1);transform:translateX(-100%);width:280px;padding-top:3.5rem}}
+.sidebar.open{transform:translateX(0)}
+.sidebar-header{padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.06);display:flex;align-items:center;justify-content:space-between}
+.sidebar-title{font-size:.75rem;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.08em}
+.sync-btn{font-size:.7rem;padding:4px 10px;border:1px solid rgba(255,230,0,.3);border-radius:20px;background:transparent;color:var(--ml-yellow);cursor:pointer;white-space:nowrap}
+.pub-list{flex:1;overflow-y:auto;padding:.5rem}
+.pub-list::-webkit-scrollbar{width:3px}
+.pub-list::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:3px}
+.pub-item{display:flex;align-items:center;gap:10px;padding:10px;border-radius:var(--radius-sm);cursor:pointer;transition:background .12s;margin-bottom:2px;border:1px solid transparent}
+.pub-item:hover{background:rgba(255,255,255,.04)}
+.pub-item.active{background:rgba(52,131,250,.12);border-color:rgba(52,131,250,.25)}
+.pub-thumb{width:38px;height:38px;border-radius:6px;background:var(--surface2);display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;border:1px solid rgba(255,255,255,.06);overflow:hidden}
+.pub-thumb img{width:100%;height:100%;object-fit:cover}
+.pub-info{flex:1;min-width:0}
+.pub-name{font-size:.78rem;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.pub-price{font-size:.72rem;color:var(--text-muted);margin-top:1px}
+.score-badge{width:30px;height:30px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.6rem;font-weight:700;font-family:'Syne',sans-serif;flex-shrink:0}
+.score-high{background:rgba(0,214,143,.15);color:var(--success);border:1px solid rgba(0,214,143,.25)}
+.score-mid{background:rgba(255,184,0,.12);color:var(--warn);border:1px solid rgba(255,184,0,.2)}
+.score-low{background:rgba(255,77,109,.12);color:var(--danger);border:1px solid rgba(255,77,109,.2)}
+.sidebar-footer{padding:.75rem 1rem;border-top:1px solid rgba(255,255,255,.06);display:flex;flex-direction:column;gap:6px}
+.store-info{font-size:.72rem;color:var(--text-muted);text-align:center}
+.store-name{font-size:.8rem;font-weight:500;color:var(--ml-yellow);text-align:center}
+.logout-btn{width:100%;padding:8px;border:1px solid rgba(255,255,255,.08);border-radius:var(--radius-sm);background:transparent;color:var(--text-muted);font-size:.78rem;cursor:pointer;transition:background .15s,color .15s}
+.logout-btn:hover{background:rgba(255,77,109,.08);color:var(--danger);border-color:rgba(255,77,109,.2)}
+
+.content{flex:1;overflow-y:auto;display:flex;flex-direction:column;min-height:0}
+.content::-webkit-scrollbar{width:3px}
+.content::-webkit-scrollbar-thumb{background:rgba(255,255,255,.08);border-radius:3px}
+
+/* LOADING STATE */
+.loading-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1rem;color:var(--text-muted)}
+.loading-state .loading-dots span{background:var(--ml-blue)}
+
+/* EMPTY */
+.empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;text-align:center;color:var(--text-muted)}
+.empty-icon{font-size:3rem;margin-bottom:1rem;opacity:.5}
+.empty-title{font-family:'Syne',sans-serif;font-size:1rem;font-weight:600;color:var(--text);margin-bottom:.5rem}
+.empty-desc{font-size:.82rem;line-height:1.6}
+
+/* DETAIL */
+.detail{padding:1rem;display:none;flex-direction:column;gap:1rem}
+.detail.visible{display:flex}
+
+.pub-hero{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);padding:1rem 1.2rem;display:flex;align-items:center;gap:12px}
+.hero-img{width:52px;height:52px;background:var(--surface2);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;overflow:hidden}
+.hero-img img{width:100%;height:100%;object-fit:cover}
+.hero-info{flex:1;min-width:0}
+.hero-title{font-family:'Syne',sans-serif;font-size:.95rem;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hero-meta{font-size:.75rem;color:var(--text-muted);margin-top:3px}
+.hero-score{width:50px;height:50px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;flex-shrink:0;border:2px solid var(--warn)}
+.hero-score-val{font-family:'Syne',sans-serif;font-size:.85rem;font-weight:700;color:var(--warn)}
+.hero-score-lbl{font-size:.55rem;color:var(--text-muted)}
+
+.metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem}
+@media(max-width:500px){.metrics{grid-template-columns:repeat(2,1fr)}}
+.metric-card{background:var(--surface);border:1px solid rgba(255,255,255,.06);border-radius:var(--radius-sm);padding:.75rem}
+.metric-label{font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+.metric-val{font-family:'Syne',sans-serif;font-size:1.3rem;font-weight:700}
+.metric-sub{font-size:.65rem;margin-top:2px}
+.sub-bad{color:var(--danger)}.sub-ok{color:var(--success)}.sub-muted{color:var(--text-muted)}
+
+.section{background:var(--surface);border:1px solid rgba(255,255,255,.07);border-radius:var(--radius);overflow:hidden}
+.sec-head{display:flex;align-items:center;justify-content:space-between;padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.06)}
+.sec-title{font-family:'Syne',sans-serif;font-size:.82rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em}
+.sec-tag{font-size:.65rem;padding:2px 8px;border-radius:20px}
+.tag-warn{background:rgba(255,184,0,.12);color:var(--warn);border:1px solid rgba(255,184,0,.2)}
+.tag-ok{background:rgba(0,214,143,.1);color:var(--success);border:1px solid rgba(0,214,143,.2)}
+.tag-info{background:rgba(52,131,250,.1);color:#6EB3FF;border:1px solid rgba(52,131,250,.2)}
+
+.suggestion-field{padding:.9rem 1rem;border-bottom:1px solid rgba(255,255,255,.05)}
+.suggestion-field:last-child{border-bottom:none}
+.field-label{font-size:.7rem;font-weight:500;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem}
+.edit-toggle{font-size:.7rem;padding:3px 8px;border:1px solid rgba(52,131,250,.3);border-radius:20px;background:transparent;color:var(--ml-blue);cursor:pointer}
+.field-current{font-size:.78rem;padding:8px 10px;border-radius:6px;background:rgba(255,255,255,.04);color:var(--text-muted);border-left:2px solid rgba(255,255,255,.12);margin-bottom:6px;font-style:italic}
+.field-suggested{font-size:.78rem;padding:8px 10px;border-radius:6px;background:rgba(0,214,143,.06);color:#7FFFCB;border-left:2px solid var(--success)}
+.field-input{width:100%;padding:8px 10px;border-radius:6px;margin-top:6px;background:rgba(255,255,255,.06);border:1px solid rgba(52,131,250,.3);color:var(--text);font-family:'DM Sans',sans-serif;font-size:.78rem;resize:vertical;display:none;outline:none}
+.field-input:focus{border-color:var(--ml-blue);background:rgba(52,131,250,.08)}
+
+.comp-table{width:100%;border-collapse:collapse}
+.comp-table th{font-size:.65rem;color:var(--text-muted);padding:6px 1rem;text-align:left;font-weight:500;text-transform:uppercase;letter-spacing:.05em}
+.comp-table td{font-size:.75rem;padding:8px 1rem;border-top:1px solid rgba(255,255,255,.05);vertical-align:middle}
+.comp-title-cell{max-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;width:100%}
+.comp-you{background:rgba(52,131,250,.07)}
+.comp-you td{color:#6EB3FF}
+.score-pill{display:inline-flex;padding:2px 7px;border-radius:20px;font-size:.65rem;font-weight:600;font-family:'Syne',sans-serif}
+.sp-high{background:rgba(0,214,143,.15);color:var(--success)}
+.sp-mid{background:rgba(255,184,0,.12);color:var(--warn)}
+.sp-you{background:rgba(52,131,250,.15);color:#6EB3FF}
+
+.factor-row{padding:8px 1rem;border-bottom:1px solid rgba(255,255,255,.04);display:flex;align-items:center;gap:10px}
+.factor-row:last-child{border-bottom:none}
+.factor-name{font-size:.75rem;min-width:140px;color:var(--text)}
+.factor-bars{flex:1;display:flex;flex-direction:column;gap:3px}
+.bar-track{height:4px;background:rgba(255,255,255,.07);border-radius:2px;overflow:hidden}
+.bar-fill{height:100%;border-radius:2px;transition:width .6s ease}
+.bar-you-fill{background:var(--ml-blue)}.bar-top-fill{background:var(--success)}
+.factor-vals{font-size:.7rem;color:var(--text-muted);min-width:60px;text-align:right;white-space:nowrap}
+
+.action-bar{padding:1rem;border-top:1px solid rgba(255,255,255,.06);display:flex;gap:.5rem;flex-shrink:0;background:var(--ml-dark)}
+.btn-apply{flex:1;padding:12px;border:none;border-radius:var(--radius-sm);background:var(--ml-blue);color:white;font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;transition:all .15s}
+.btn-apply:hover{opacity:.88}
+.btn-apply.applied{background:var(--success);color:#0F3460}
+.btn-apply.applying{background:rgba(255,255,255,.1);color:var(--text-muted);cursor:default}
+.btn-secondary{padding:12px 14px;border:1px solid rgba(255,255,255,.1);border-radius:var(--radius-sm);background:transparent;color:var(--text-muted);font-size:.82rem;cursor:pointer;white-space:nowrap}
+.btn-secondary:hover{background:rgba(255,255,255,.05);color:var(--text)}
+
+.mobile-bar{display:none;align-items:center;justify-content:space-between;padding:.6rem 1rem;border-top:1px solid rgba(255,255,255,.06);background:var(--ml-dark);flex-shrink:0}
+@media(max-width:768px){.mobile-bar{display:flex}}
+.mobile-tab{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:.6rem;color:var(--text-muted);cursor:pointer;padding:4px 12px;border-radius:var(--radius-sm);border:none;background:transparent}
+.mobile-tab.active{color:var(--ml-yellow)}
+.mobile-tab svg{width:20px;height:20px}
+.hamburger{display:none;background:transparent;border:none;color:var(--text);cursor:pointer;padding:4px}
+@media(max-width:768px){.hamburger{display:flex;align-items:center;justify-content:center}}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:40}
+.overlay.open{display:block}
+
+.toast{position:fixed;bottom:80px;left:50%;transform:translateX(-50%) translateY(20px);background:var(--surface2);border:1px solid rgba(255,255,255,.12);border-radius:var(--radius-sm);padding:.6rem 1.2rem;font-size:.8rem;color:var(--text);opacity:0;transition:all .3s;white-space:nowrap;z-index:999;pointer-events:none}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(min-width:769px){.toast{bottom:20px}}
+
+.plan-row{display:flex;align-items:flex-start;gap:10px;margin-bottom:.5rem}
+.plan-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.plan-text{font-size:.78rem;color:var(--text-muted);line-height:1.5}
+.plan-text strong{color:var(--text);font-weight:500}
+
+.status-bar{font-size:.72rem;padding:6px 1rem;background:rgba(52,131,250,.08);border-bottom:1px solid rgba(52,131,250,.15);color:#6EB3FF;display:none}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.detail.visible > *{animation:fadeUp .3s ease forwards;opacity:0}
+.detail.visible > *:nth-child(1){animation-delay:.05s}
+.detail.visible > *:nth-child(2){animation-delay:.1s}
+.detail.visible > *:nth-child(3){animation-delay:.15s}
+.detail.visible > *:nth-child(4){animation-delay:.2s}
+.detail.visible > *:nth-child(5){animation-delay:.25s}
+.detail.visible > *:nth-child(6){animation-delay:.3s}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginScreen">
+  <div class="login-logo">MLInsight</div>
+  <div class="login-sub">Optimizador inteligente · KYMDREAMS · Perú</div>
+  <div class="login-card">
+    <div class="login-title">Conecta tu cuenta</div>
+    <div class="login-desc">Inicia sesión con tu cuenta de Mercado Libre para ver y optimizar tus publicaciones reales.</div>
+    <a id="mlLoginBtn" href="#" class="btn-ml" onclick="doLogin(event)">
+      <div class="ml-icon">ML</div>
+      Continuar con Mercado Libre
+    </a>
+    <div class="login-note">Solo accedemos a tus publicaciones. Nunca a tus datos de pago ni contraseña.</div>
+    <hr class="divider">
+    <button class="demo-btn" onclick="loginDemo()">Entrar en modo demo (sin cuenta)</button>
+  </div>
+</div>
+
+<!-- CALLBACK LOADING -->
+<div id="callbackScreen">
+  <div class="login-logo">MLInsight</div>
+  <div class="loading-dots"><span></span><span></span><span></span></div>
+  <div style="font-size:.85rem;color:var(--text-muted)">Conectando con Mercado Libre...</div>
+</div>
+
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
+<div class="toast" id="toast"></div>
+
+<!-- APP -->
+<div id="app">
+  <div class="status-bar" id="statusBar"></div>
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:10px">
+      <button class="hamburger" onclick="toggleSidebar()">
+        <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+        </svg>
+      </button>
+      <div class="topbar-logo">MLInsight</div>
+    </div>
+    <div class="topbar-user">
+      <span class="conn-badge" id="connBadge">Conectado · PE</span>
+      <span class="user-name" id="userName"></span>
+      <div class="user-avatar" id="userAvatar">KD</div>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <span class="sidebar-title">Publicaciones</span>
+        <button class="sync-btn" onclick="syncPubs()">↻ Sync</button>
+      </div>
+      <div class="pub-list" id="pubList">
+        <div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">
+          <div class="loading-dots" style="justify-content:center;margin-bottom:.5rem"><span></span><span></span><span></span></div>
+          Cargando publicaciones...
+        </div>
+      </div>
+      <div class="sidebar-footer">
+        <div class="store-name" id="storeName">KYMDREAMS</div>
+        <div class="store-info">Mercado Libre Perú</div>
+        <button class="logout-btn" onclick="logout()">Cerrar sesión</button>
+      </div>
+    </div>
+
+    <div class="content" id="mainContent">
+      <div class="empty-state" id="emptyState">
+        <div class="empty-icon">👜</div>
+        <div class="empty-title">Selecciona una publicación</div>
+        <div class="empty-desc">Elige una publicación de la lista para ver el análisis completo con sugerencias basadas en el top de Mercado Libre.</div>
+      </div>
+      <div class="detail" id="detailPanel">
+        <div class="pub-hero">
+          <div class="hero-img" id="dHeroImg"></div>
+          <div class="hero-info">
+            <div class="hero-title" id="dHeroTitle"></div>
+            <div class="hero-meta" id="dHeroMeta"></div>
+          </div>
+          <div class="hero-score" id="dHeroScore">
+            <div class="hero-score-val" id="dScoreVal"></div>
+            <div class="hero-score-lbl">score</div>
+          </div>
+        </div>
+        <div class="metrics">
+          <div class="metric-card"><div class="metric-label">Visitas 30d</div><div class="metric-val" id="dVisits">—</div><div class="metric-sub sub-muted" id="dVisitsSub"></div></div>
+          <div class="metric-card"><div class="metric-label">Conversión</div><div class="metric-val" id="dConv">—</div><div class="metric-sub" id="dConvSub"></div></div>
+          <div class="metric-card"><div class="metric-label">Ventas 30d</div><div class="metric-val" id="dSales">—</div><div class="metric-sub sub-muted" id="dSalesSub"></div></div>
+          <div class="metric-card"><div class="metric-label">Estado</div><div class="metric-val" id="dPos" style="font-size:.9rem"></div><div class="metric-sub sub-muted" id="dPosSub"></div></div>
+        </div>
+        <div class="section">
+          <div class="sec-head">
+            <span class="sec-title">Sugerencias Nubimetrics</span>
+            <span class="sec-tag tag-warn" id="dSugTag"></span>
+          </div>
+          <div class="suggestion-field">
+            <div class="field-label">Título<button class="edit-toggle" onclick="toggleField('titleInput')">Editar</button></div>
+            <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:4px">Actual:</div>
+            <div class="field-current" id="dCurTitle"></div>
+            <div style="font-size:.68rem;color:var(--success);margin-bottom:4px">Sugerido (basado en top ML):</div>
+            <div class="field-suggested" id="dSugTitle"></div>
+            <textarea class="field-input" id="titleInput" rows="2" placeholder="Escribe tu propio título..."></textarea>
+          </div>
+          <div class="suggestion-field">
+            <div class="field-label">Precio<button class="edit-toggle" onclick="toggleField('priceInput')">Editar</button></div>
+            <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:4px">Actual:</div>
+            <div class="field-current" id="dCurPrice"></div>
+            <div style="font-size:.68rem;color:var(--success);margin-bottom:4px">Rango óptimo:</div>
+            <div class="field-suggested" id="dSugPrice"></div>
+            <textarea class="field-input" id="priceInput" rows="1" placeholder="Nuevo precio (solo número, ej: 159.90)"></textarea>
+          </div>
+          <div class="suggestion-field">
+            <div class="field-label">Descripción<button class="edit-toggle" onclick="toggleField('descInput')">Editar</button></div>
+            <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:4px">Actual:</div>
+            <div class="field-current" id="dCurDesc"></div>
+            <div style="font-size:.68rem;color:var(--success);margin-bottom:4px">Estructura sugerida:</div>
+            <div class="field-suggested" id="dSugDesc"></div>
+            <textarea class="field-input" id="descInput" rows="3" placeholder="Escribe tu propia descripción..."></textarea>
+          </div>
+        </div>
+        <div class="section">
+          <div class="sec-head"><span class="sec-title">Factores vs top ML</span><span class="sec-tag tag-info">Comparativa</span></div>
+          <div id="factorsContainer"></div>
+        </div>
+        <div class="section">
+          <div class="sec-head"><span class="sec-title">Plan de acción</span><span class="sec-tag tag-warn">Priorizado</span></div>
+          <div style="padding:.75rem 1rem" id="actionPlan"></div>
+        </div>
+        <div style="height:.25rem"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="action-bar" id="actionBar" style="display:none">
+    <button class="btn-apply" id="applyBtn" onclick="applyChanges()">Aplicar cambios en Mercado Libre</button>
+    <button class="btn-secondary" onclick="revertChanges()">Restaurar</button>
+  </div>
+
+  <div class="mobile-bar">
+    <button class="mobile-tab active" onclick="mobileTab(this,'list')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+      Publicaciones
+    </button>
+    <button class="mobile-tab" onclick="mobileTab(this,'detail')">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+      Análisis
+    </button>
+    <button class="mobile-tab" onclick="syncPubs()">
+      <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/></svg>
+      Sync
+    </button>
+  </div>
+</div>
+
+<script>
+// ── CONFIGURACIÓN REAL ─────────────────────────────────────────────────────
+const CLIENT_ID = '7038339915938205';
+const REDIRECT_URI = 'https://mlinsight.vercel.app/callback';
+const ML_AUTH_URL = `https://auth.mercadolibre.com.pe/authorization?response_type=code&client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}`;
+
+let accessToken = null;
+let currentPub = null;
+let allPubs = [];
+let userInfo = null;
+
+// ── OAUTH FLOW ─────────────────────────────────────────────────────────────
+function doLogin(e){
+  e.preventDefault();
+  window.location.href = ML_AUTH_URL;
+}
+
+function loginDemo(){
+  loadDemoMode();
+}
+
+function logout(){
+  accessToken = null;
+  currentPub = null;
+  allPubs = [];
+  localStorage.removeItem('ml_token');
+  localStorage.removeItem('ml_token_exp');
+  document.getElementById('app').classList.remove('visible');
+  document.getElementById('loginScreen').style.display='flex';
+  showToast('Sesión cerrada');
+}
+
+// ── CALLBACK HANDLER ───────────────────────────────────────────────────────
+async function handleCallback(){
+  const params = new URLSearchParams(window.location.search);
+  const code = params.get('code');
+  if(!code) return false;
+
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('callbackScreen').style.display='flex';
+
+  try {
+    // Intercambiar code por token via proxy serverless
+    const res = await fetch('/api/token', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ code, redirect_uri: REDIRECT_URI })
+    });
+    const data = await res.json();
+    if(data.access_token){
+      accessToken = data.access_token;
+      localStorage.setItem('ml_token', accessToken);
+      localStorage.setItem('ml_token_exp', Date.now() + (data.expires_in * 1000));
+      window.history.replaceState({}, document.title, '/');
+      await launchApp();
+    } else {
+      throw new Error(data.message || 'Error de autenticación');
+    }
+  } catch(err){
+    document.getElementById('callbackScreen').style.display='none';
+    document.getElementById('loginScreen').style.display='flex';
+    showToast('Error al conectar: ' + err.message);
+  }
+  return true;
+}
+
+// ── SESSION RESTORE ────────────────────────────────────────────────────────
+function restoreSession(){
+  const token = localStorage.getItem('ml_token');
+  const exp = localStorage.getItem('ml_token_exp');
+  if(token && exp && Date.now() < parseInt(exp)){
+    accessToken = token;
+    return true;
+  }
+  return false;
+}
+
+// ── LAUNCH APP ────────────────────────────────────────────────────────────
+async function launchApp(){
+  document.getElementById('callbackScreen').style.display='none';
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').classList.add('visible');
+  await fetchUserInfo();
+  await fetchPublications();
+}
+
+// ── API CALLS ─────────────────────────────────────────────────────────────
+async function mlGet(url){
+  const res = await fetch('https://api.mercadolibre.com' + url, {
+    headers:{ 'Authorization': `Bearer ${accessToken}` }
+  });
+  return res.json();
+}
+
+async function mlPatch(url, body){
+  const res = await fetch('https://api.mercadolibre.com' + url, {
+    method:'PUT',
+    headers:{
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  return res.json();
+}
+
+async function fetchUserInfo(){
+  try {
+    userInfo = await mlGet('/users/me');
+    const name = userInfo.nickname || userInfo.first_name || 'Mi tienda';
+    const initials = name.substring(0,2).toUpperCase();
+    document.getElementById('userName').textContent = name;
+    document.getElementById('userAvatar').textContent = initials;
+    document.getElementById('storeName').textContent = name;
+    document.getElementById('connBadge').textContent = 'Conectado · PE';
+  } catch(e){
+    console.error('Error fetchUserInfo:', e);
+  }
+}
+
+async function fetchPublications(){
+  if(!userInfo) return;
+  document.getElementById('pubList').innerHTML = `
+    <div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">
+      <div class="loading-dots" style="justify-content:center;margin-bottom:.5rem"><span></span><span></span><span></span></div>
+      Cargando publicaciones...
+    </div>`;
+  try {
+    const userId = userInfo.id;
+    // Traer IDs de publicaciones activas
+    const searchRes = await mlGet(`/users/${userId}/items/search?status=active&limit=50`);
+    const ids = searchRes.results || [];
+    if(ids.length === 0){
+      document.getElementById('pubList').innerHTML = '<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">No tienes publicaciones activas.</div>';
+      return;
+    }
+    // Traer detalles en batch (máx 20 por llamada)
+    const batches = [];
+    for(let i=0;i<ids.length;i+=20) batches.push(ids.slice(i,i+20));
+    allPubs = [];
+    for(const batch of batches){
+      const multiRes = await mlGet(`/items?ids=${batch.join(',')}&attributes=id,title,price,thumbnail,status,category_id,available_quantity,sold_quantity`);
+      const items = multiRes.map ? multiRes : [];
+      items.forEach(r => { if(r.code===200 && r.body) allPubs.push(r.body); });
+    }
+    renderPubList();
+    showToast(`${allPubs.length} publicaciones cargadas`);
+  } catch(e){
+    console.error('Error fetchPublications:', e);
+    document.getElementById('pubList').innerHTML = '<div style="padding:1rem;text-align:center;color:var(--danger);font-size:.8rem">Error al cargar publicaciones.</div>';
+  }
+}
+
+async function syncPubs(){
+  showToast('Sincronizando con Mercado Libre...');
+  await fetchPublications();
+}
+
+// ── RENDER ────────────────────────────────────────────────────────────────
+function scoreForPub(p){
+  let s = 50;
+  const titleLen = (p.title||'').length;
+  if(titleLen > 40) s += 15;
+  else if(titleLen > 25) s += 8;
+  if(p.thumbnail && !p.thumbnail.includes('noimg')) s += 10;
+  if(p.available_quantity > 0) s += 10;
+  if(p.sold_quantity > 10) s += 15;
+  else if(p.sold_quantity > 0) s += 8;
+  return Math.min(s, 99);
+}
+
+function scoreClass(s){ return s>=80?'score-high':s>=55?'score-mid':'score-low'; }
+
+function renderPubList(){
+  const list = document.getElementById('pubList');
+  if(!allPubs.length){
+    list.innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">No hay publicaciones.</div>';
+    return;
+  }
+  list.innerHTML = allPubs.map((p,i) => {
+    const score = scoreForPub(p);
+    const sc = scoreClass(score);
+    const thumb = p.thumbnail ? `<img src="${p.thumbnail}" alt="">` : '📦';
+    const isImg = !!p.thumbnail;
+    return `<div class="pub-item ${currentPub&&currentPub.id===p.id?'active':''}" onclick="selectPub(${i})">
+      <div class="pub-thumb">${isImg ? `<img src="${p.thumbnail}" alt="">` : '📦'}</div>
+      <div class="pub-info">
+        <div class="pub-name">${p.title}</div>
+        <div class="pub-price">S/ ${parseFloat(p.price).toFixed(2)}</div>
+      </div>
+      <div class="score-badge ${sc}">${score}%</div>
+    </div>`;
+  }).join('');
+}
+
+// ── SELECT PUB ────────────────────────────────────────────────────────────
+async function selectPub(idx){
+  currentPub = allPubs[idx];
+  closeSidebar();
+  renderPubList();
+
+  const p = currentPub;
+  const score = scoreForPub(p);
+  const scoreColor = score>=80?'var(--success)':score>=55?'var(--warn)':'var(--danger)';
+
+  document.getElementById('emptyState').style.display='none';
+  const detail = document.getElementById('detailPanel');
+  detail.classList.remove('visible');
+  void detail.offsetWidth;
+  detail.classList.add('visible');
+
+  // Hero
+  if(p.thumbnail){
+    document.getElementById('dHeroImg').innerHTML = `<img src="${p.thumbnail}" alt="">`;
+  } else {
+    document.getElementById('dHeroImg').textContent = '📦';
+  }
+  document.getElementById('dHeroTitle').textContent = p.title;
+  document.getElementById('dHeroMeta').textContent = p.id + ' · ' + (p.status==='active'?'Activa':'Pausada') + ' · Perú';
+  document.getElementById('dScoreVal').textContent = score + '%';
+  document.getElementById('dHeroScore').style.borderColor = scoreColor;
+  document.getElementById('dScoreVal').style.color = scoreColor;
+
+  // Metrics
+  document.getElementById('dVisits').textContent = '—';
+  document.getElementById('dVisitsSub').textContent = 'Cargando...';
+  document.getElementById('dConv').textContent = '—';
+  document.getElementById('dConvSub').textContent = '';
+  document.getElementById('dSales').textContent = p.sold_quantity || 0;
+  document.getElementById('dSalesSub').textContent = p.available_quantity + ' en stock';
+  document.getElementById('dPos').textContent = p.status === 'active' ? 'Activa' : 'Pausada';
+  document.getElementById('dPosSub').textContent = 'Estado actual';
+
+  // Fetch visits async
+  fetchVisits(p.id);
+
+  // Sugerencias basadas en el título real
+  const suggestions = generateSuggestions(p);
+  document.getElementById('dSugTag').textContent = suggestions.issues + ' campos a mejorar';
+  document.getElementById('dCurTitle').textContent = p.title;
+  document.getElementById('dSugTitle').textContent = suggestions.title;
+  document.getElementById('dCurPrice').textContent = 'S/ ' + parseFloat(p.price).toFixed(2);
+  document.getElementById('dSugPrice').textContent = suggestions.price;
+  document.getElementById('dCurDesc').textContent = 'Ver descripción completa en ML';
+  document.getElementById('dSugDesc').textContent = suggestions.desc;
+
+  ['titleInput','priceInput','descInput'].forEach(id=>{
+    const el=document.getElementById(id); el.style.display='none'; el.value='';
+  });
+
+  // Factores
+  document.getElementById('factorsContainer').innerHTML = suggestions.factors.map(f=>`
+    <div class="factor-row">
+      <div class="factor-name">${f.name}</div>
+      <div class="factor-bars">
+        <div class="bar-track"><div class="bar-fill bar-you-fill" style="width:${f.you}%"></div></div>
+        <div class="bar-track"><div class="bar-fill bar-top-fill" style="width:${f.top}%"></div></div>
+      </div>
+      <div class="factor-vals">${f.you}% / ${f.top}%</div>
+    </div>`).join('');
+
+  // Plan
+  document.getElementById('actionPlan').innerHTML = suggestions.plan.map(item=>`
+    <div class="plan-row">
+      <div class="plan-dot" style="background:${item.color}"></div>
+      <div class="plan-text">${item.text}</div>
+    </div>`).join('');
+
+  const btn = document.getElementById('applyBtn');
+  btn.textContent = 'Aplicar cambios en Mercado Libre';
+  btn.className = 'btn-apply';
+  document.getElementById('actionBar').style.display = 'flex';
+
+  if(window.innerWidth<=768){
+    document.querySelectorAll('.mobile-tab').forEach((t,i)=>t.classList.toggle('active',i===1));
+  }
+}
+
+async function fetchVisits(itemId){
+  if(!accessToken) return;
+  try {
+    const today = new Date().toISOString().split('T')[0];
+    const ago30 = new Date(Date.now()-30*864e5).toISOString().split('T')[0];
+    const res = await mlGet(`/items/${itemId}/visits?date_from=${ago30}&date_to=${today}`);
+    const visits = res.total_visits || 0;
+    document.getElementById('dVisits').textContent = visits;
+    document.getElementById('dVisitsSub').textContent = 'últimos 30 días';
+    if(visits > 0 && currentPub){
+      const sold = currentPub.sold_quantity || 0;
+      const conv = visits > 0 ? ((sold/visits)*100).toFixed(1)+'%' : '0%';
+      document.getElementById('dConv').textContent = conv;
+      document.getElementById('dConvSub').textContent = 'ventas / visitas';
+    }
+  } catch(e){ console.error('fetchVisits error:', e); }
+}
+
+// ── SUGGESTIONS ENGINE ────────────────────────────────────────────────────
+function generateSuggestions(p){
+  const title = p.title || '';
+  const price = parseFloat(p.price) || 0;
+  const titleLen = title.length;
+  const hasSize = /talla|tamaño|size|\d+ml|\d+gr|\d+cm|\d+-\d+/i.test(title);
+  const hasBrand = /samsung|apple|xiaomi|lg|sony|nike|adidas|asus|hp|dell|lenovo/i.test(title);
+  const titleScore = Math.min(95, 30 + (titleLen > 50 ? 30 : titleLen > 30 ? 20 : 5) + (hasSize?15:0) + (hasBrand?10:0));
+  const priceScore = 70;
+  const descScore = 35;
+  const photoScore = p.thumbnail ? 65 : 20;
+  const repScore = 80;
+  const shipScore = 75;
+
+  const sugTitle = title + (hasSize?'':' Talla Única') + (title.toLowerCase().includes('envio')?'':' Envío Rápido');
+  const sugTitleClean = sugTitle.substring(0,80);
+  const sugPrice = `S/ ${(price*0.9).toFixed(2)} – S/ ${(price*0.95).toFixed(2)} (rango óptimo estimado)`;
+
+  const issues = [titleScore<80, priceScore<80, descScore<80, photoScore<80].filter(Boolean).length;
+
+  const plan = [];
+  if(titleScore < 80) plan.push({color:'var(--danger)',text:`<strong>Título:</strong> Solo tiene ${titleLen} caracteres. Agrega: talla, marca, característica principal y compatibilidad.`});
+  if(descScore < 80) plan.push({color:'var(--danger)',text:'<strong>Descripción:</strong> Agrega especificaciones, garantía, tallas disponibles y formas de envío.'});
+  if(priceScore < 80) plan.push({color:'var(--warn)',text:`<strong>Precio:</strong> S/ ${price.toFixed(2)} puede estar por encima del rango óptimo. Revisa competidores.`});
+  if(photoScore < 80) plan.push({color:'var(--warn)',text:'<strong>Fotos:</strong> Agrega mínimo 6 fotos: frente, lateral, detalle, uso y empaque.'});
+  plan.push({color:'var(--success)',text:'<strong>Reputación:</strong> Mantén tiempos de respuesta rápidos para mejorar tu posición.'});
+
+  return {
+    issues,
+    title: sugTitleClean,
+    price: sugPrice,
+    desc: 'Características + Tallas disponibles + Material + Garantía + Tiempo de envío + Marca',
+    factors:[
+      {name:'Título (palabras clave)',you:titleScore,top:94},
+      {name:'Precio competitivo',you:priceScore,top:90},
+      {name:'Descripción',you:descScore,top:92},
+      {name:'Fotos',you:photoScore,top:91},
+      {name:'Reputación vendedor',you:repScore,top:96},
+      {name:'Envío',you:shipScore,top:88},
+    ],
+    plan
+  };
+}
+
+// ── APPLY CHANGES (API REAL) ──────────────────────────────────────────────
+async function applyChanges(){
+  if(!currentPub || !accessToken) return;
+  const btn = document.getElementById('applyBtn');
+  const titleVal = document.getElementById('titleInput').value.trim();
+  const priceVal = document.getElementById('priceInput').value.trim();
+  const descVal = document.getElementById('descInput').value.trim();
+
+  const suggestions = generateSuggestions(currentPub);
+  const newTitle = titleVal || suggestions.title;
+  const newPrice = priceVal ? parseFloat(priceVal) : null;
+  const newDesc = descVal || null;
+
+  const body = {};
+  if(newTitle && newTitle !== currentPub.title) body.title = newTitle;
+  if(newPrice && newPrice !== parseFloat(currentPub.price)) body.price = newPrice;
+  if(newDesc) body.description = { plain_text: newDesc };
+
+  if(!Object.keys(body).length){
+    showToast('No hay cambios para aplicar');
+    return;
+  }
+
+  btn.textContent = 'Aplicando en Mercado Libre...';
+  btn.className = 'btn-apply applying';
+
+  try {
+    await mlPatch(`/items/${currentPub.id}`, body);
+    if(body.description){
+      await fetch(`https://api.mercadolibre.com/items/${currentPub.id}/description`, {
+        method:'PUT',
+        headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},
+        body: JSON.stringify({ plain_text: newDesc })
+      });
+    }
+    // Actualizar localmente
+    if(body.title) currentPub.title = body.title;
+    if(body.price) currentPub.price = body.price;
+    btn.textContent = '✓ Cambios aplicados en ML';
+    btn.className = 'btn-apply applied';
+    showToast('¡Publicación actualizada en Mercado Libre!');
+    renderPubList();
+  } catch(e){
+    btn.textContent = 'Error — intenta de nuevo';
+    btn.className = 'btn-apply';
+    showToast('Error al aplicar: ' + e.message);
+  }
+}
+
+function revertChanges(){
+  ['titleInput','priceInput','descInput'].forEach(id=>{
+    const el=document.getElementById(id); el.style.display='none'; el.value='';
+  });
+  const btn=document.getElementById('applyBtn');
+  btn.textContent='Aplicar cambios en Mercado Libre';
+  btn.className='btn-apply';
+  showToast('Cambios descartados');
+}
+
+function toggleField(id){
+  const el=document.getElementById(id);
+  el.style.display=el.style.display==='none'||!el.style.display?'block':'none';
+  if(el.style.display==='block') el.focus();
+}
+
+// ── DEMO MODE ─────────────────────────────────────────────────────────────
+function loadDemoMode(){
+  document.getElementById('loginScreen').style.display='none';
+  document.getElementById('app').classList.add('visible');
+  document.getElementById('userName').textContent='Modo Demo';
+  document.getElementById('userAvatar').textContent='DM';
+  document.getElementById('storeName').textContent='Modo Demo';
+  document.getElementById('connBadge').textContent='Demo · PE';
+  showStatusBar('Modo demo — conecta tu cuenta real para ver tus publicaciones');
+
+  allPubs = [
+    {id:'MLC123456',title:'Zapatillas deportivas hombre running talla 40',price:189.90,thumbnail:'',status:'active',sold_quantity:7,available_quantity:15},
+    {id:'MLC234567',title:'Reloj smartwatch',price:245.00,thumbnail:'',status:'active',sold_quantity:1,available_quantity:8},
+    {id:'MLC345678',title:'Auriculares Bluetooth inalámbricos cancelación ruido 30h batería',price:129.00,thumbnail:'',status:'active',sold_quantity:53,available_quantity:22},
+    {id:'MLC456789',title:'Laptop stand ajustable aluminio',price:89.90,thumbnail:'',status:'active',sold_quantity:4,available_quantity:30},
+    {id:'MLC567890',title:'Cargador inalámbrico rápido 15W compatible iPhone Samsung',price:45.00,thumbnail:'',status:'active',sold_quantity:21,available_quantity:50},
+  ];
+  renderPubList();
+}
+
+// ── UI HELPERS ────────────────────────────────────────────────────────────
+function showStatusBar(msg){
+  const bar=document.getElementById('statusBar');
+  bar.textContent=msg; bar.style.display='block';
+}
+function toggleSidebar(){
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('open');
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('open');
+}
+function mobileTab(el,tab){
+  document.querySelectorAll('.mobile-tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  if(tab==='list') toggleSidebar();
+  else closeSidebar();
+}
+function showToast(msg){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'),2800);
+}
+
+// ── INIT ──────────────────────────────────────────────────────────────────
+(async function init(){
+  const isCallback = await handleCallback();
+  if(isCallback) return;
+  if(restoreSession()){
+    document.getElementById('loginScreen').style.display='none';
+    document.getElementById('app').classList.add('visible');
+    await fetchUserInfo();
+    await fetchPublications();
+  }
+})();
+</script>
+</body>
+</html>
