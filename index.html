@@ -392,9 +392,14 @@ async function fetchPublications(){
   document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem"><div class="loading-dots" style="justify-content:center;margin-bottom:.5rem"><span></span><span></span><span></span></div>Cargando publicaciones...</div>';
   try{
     const userId=userInfo.id;
-    const searchRes=await mlGet(`/users/${userId}/items/search?status=active&limit=50`);
+    const searchRes=await mlGet(`/users/${userId}/items/search?limit=50`);
+    console.log('searchRes:', JSON.stringify(searchRes));
     const ids=searchRes.results||[];
-    if(!ids.length){document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">No tienes publicaciones activas.</div>';return;}
+    if(!ids.length){
+      const msg=searchRes.message||searchRes.error||'Sin publicaciones';
+      document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">'+msg+'</div>';
+      return;
+    }
     allPubs=[];
     for(let i=0;i<ids.length;i+=20){
       const batch=ids.slice(i,i+20);
@@ -404,7 +409,8 @@ async function fetchPublications(){
     renderPubList();
     showToast(`${allPubs.length} publicaciones cargadas`);
   }catch(e){
-    document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--danger);font-size:.8rem">Error al cargar. Toca Sync.</div>';
+    console.error('fetchPublications error:', e);
+    document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--danger);font-size:.8rem">Error: '+e.message+'</div>';
   }
 }
 
