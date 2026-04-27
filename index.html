@@ -451,14 +451,33 @@ function scoreClass(s){return s>=80?'score-high':s>=55?'score-mid':'score-low';}
 function renderPubList(){
   const list=document.getElementById('pubList');
   if(!allPubs.length){list.innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">No hay publicaciones.</div>';return;}
-  list.innerHTML=allPubs.map((p,i)=>{
-    const score=scoreForPub(p);
-    return`<div class="pub-item ${currentPub&&currentPub.id===p.id?'active':''}" onclick="selectPub(${i})">
-      <div class="pub-thumb">${p.thumbnail?`<img src="${p.thumbnail}" alt="">`:'📦'}</div>
-      <div class="pub-info"><div class="pub-name">${p.title}</div><div class="pub-price">S/ ${parseFloat(p.price).toFixed(2)}</div></div>
-      <div class="score-badge ${scoreClass(score)}">${score}%</div>
-    </div>`;
-  }).join('');
+
+  // Ordenar de menor score (más fallas) a mayor score (casi perfecto)
+  const sorted=[...allPubs].sort((a,b)=>scoreForPub(a)-scoreForPub(b));
+
+  // Grupos visuales
+  const groups=[
+    {label:'🔴 Necesitan atención urgente',min:0,max:54,color:'var(--danger)'},
+    {label:'🟡 Pueden mejorar',min:55,max:79,color:'var(--warn)'},
+    {label:'🟢 Bien posicionadas',min:80,max:100,color:'var(--success)'},
+  ];
+
+  let html='';
+  for(const g of groups){
+    const pubs=sorted.filter(p=>{const s=scoreForPub(p);return s>=g.min&&s<=g.max;});
+    if(!pubs.length) continue;
+    html+=`<div style="padding:6px 10px 4px;font-size:.65rem;font-weight:500;color:${g.color};text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid rgba(255,255,255,.04)">${g.label} (${pubs.length})</div>`;
+    html+=pubs.map(p=>{
+      const score=scoreForPub(p);
+      const origIdx=allPubs.indexOf(p);
+      return`<div class="pub-item ${currentPub&&currentPub.id===p.id?'active':''}" onclick="selectPub(${origIdx})">
+        <div class="pub-thumb">${p.thumbnail?`<img src="${p.thumbnail}" alt="">`:'📦'}</div>
+        <div class="pub-info"><div class="pub-name">${p.title}</div><div class="pub-price">S/ ${parseFloat(p.price).toFixed(2)}</div></div>
+        <div class="score-badge ${scoreClass(score)}">${score}%</div>
+      </div>`;
+    }).join('');
+  }
+  list.innerHTML=html;
 }
 
 async function selectPub(idx){
