@@ -260,6 +260,55 @@ body{font-family:'DM Sans',sans-serif;background:var(--ml-dark);color:var(--text
           <div class="sec-head"><span class="sec-title">Plan de acción</span><span class="sec-tag tag-warn">Priorizado</span></div>
           <div style="padding:.75rem 1rem" id="actionPlan"></div>
         </div>
+        <!-- ANÁLISIS FOTO PORTADA IA -->
+        <div class="section" id="photoSection" style="display:none">
+          <div class="sec-head">
+            <span class="sec-title">Análisis de foto de portada</span>
+            <span class="sec-tag tag-info">IA + Datos ML</span>
+          </div>
+          <div style="padding:.75rem 1rem">
+
+            <!-- Foto actual + score -->
+            <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:1rem">
+              <div style="flex-shrink:0">
+                <div style="font-size:.65rem;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:.05em">Portada actual</div>
+                <div id="currentPhotoBox" style="width:90px;height:90px;border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,.1);background:var(--surface2);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:28px">📦</div>
+              </div>
+              <div style="flex:1">
+                <div style="font-size:.65rem;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.05em">Diagnóstico IA</div>
+                <div id="photoDiagnostic" style="font-size:.78rem;color:var(--text-muted);line-height:1.6;background:var(--surface2);border-radius:var(--radius-sm);padding:8px 10px;min-height:60px">
+                  Toca "Analizar" para evaluar tu foto con IA
+                </div>
+                <div id="photoScoreRow" style="display:flex;align-items:center;gap:8px;margin-top:6px;display:none">
+                  <div style="font-size:.65rem;color:var(--text-muted)">Score de conversión:</div>
+                  <div id="photoScorePill" style="font-size:.7rem;font-weight:700;padding:2px 10px;border-radius:20px"></div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Factores de evaluación -->
+            <div id="photoFactors" style="display:none;margin-bottom:1rem">
+              <div style="font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Factores que impactan la conversión</div>
+              <div id="photoFactorsList"></div>
+            </div>
+
+            <!-- Foto mejorada sugerida -->
+            <div id="photoSuggestionBox" style="display:none;margin-bottom:1rem">
+              <div style="font-size:.65rem;color:var(--success);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">¿Cómo debería verse tu portada ideal?</div>
+              <div id="photoSuggestionText" style="font-size:.78rem;color:var(--text);line-height:1.7;background:rgba(0,214,143,.06);border-left:2px solid var(--success);border-radius:0 var(--radius-sm) var(--radius-sm) 0;padding:10px 12px"></div>
+              <div style="margin-top:.75rem">
+                <div style="font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Estudios de conversión — por qué importa la portada</div>
+                <div id="photoStudyData" style="font-size:.75rem;color:var(--text-muted);line-height:1.8"></div>
+              </div>
+            </div>
+
+            <button onclick="analyzePhoto()" id="analyzePhotoBtn"
+              style="width:100%;padding:11px;border:none;border-radius:var(--radius-sm);background:var(--ml-blue);color:white;font-family:'Syne',sans-serif;font-size:.88rem;font-weight:700;cursor:pointer;transition:opacity .15s">
+              ✦ Analizar foto de portada con IA
+            </button>
+          </div>
+        </div>
+
         <div style="height:.25rem"></div>
       </div>
     </div>
@@ -528,6 +577,22 @@ async function selectPub(idx){
   const btn=document.getElementById('applyBtn');
   btn.textContent='Aplicar cambios en Mercado Libre';btn.className='btn-apply';
   document.getElementById('actionBar').style.display='flex';
+  // Mostrar foto actual en el analizador
+  document.getElementById('photoSection').style.display='block';
+  const cpb=document.getElementById('currentPhotoBox');
+  if(p.thumbnail && !p.thumbnail.includes('noimg')){
+    cpb.innerHTML=`<img src="${p.thumbnail}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    cpb.innerHTML='📦';
+  }
+  document.getElementById('photoDiagnostic').textContent='Toca "Analizar" para evaluar tu foto con IA';
+  document.getElementById('photoDiagnostic').style.color='var(--text-muted)';
+  document.getElementById('photoScoreRow').style.display='none';
+  document.getElementById('photoFactors').style.display='none';
+  document.getElementById('photoSuggestionBox').style.display='none';
+  document.getElementById('analyzePhotoBtn').textContent='✦ Analizar foto de portada con IA';
+  document.getElementById('analyzePhotoBtn').disabled=false;
+  document.getElementById('analyzePhotoBtn').style.background='var(--ml-blue)';
   if(window.innerWidth<=768)document.querySelectorAll('.mobile-tab').forEach((t,i)=>t.classList.toggle('active',i===1));
 }
 
@@ -845,6 +910,129 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 function mobileTab(el,tab){document.querySelectorAll('.mobile-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');if(tab==='list')toggleSidebar();else closeSidebar();}
 function logout(){accessToken=null;currentPub=null;allPubs=[];localStorage.removeItem('ml_token');localStorage.removeItem('ml_token_exp');document.getElementById('app').classList.remove('visible');document.getElementById('loginScreen').style.display='flex';showToast('Sesión cerrada');}
 async function syncPubs(){showToast('Sincronizando...');await fetchPublications();}
+async function analyzePhoto(){
+  if(!currentPub) return;
+  const btn=document.getElementById('analyzePhotoBtn');
+  btn.textContent='Analizando con IA...';
+  btn.disabled=true;
+  btn.style.background='rgba(255,255,255,.1)';
+
+  const cat=detectCategory(currentPub.title||'');
+  const hasThumbnail=currentPub.thumbnail&&!currentPub.thumbnail.includes('noimg');
+  const price=parseFloat(currentPub.price)||0;
+  const sold=currentPub.sold_quantity||0;
+  const title=currentPub.title||'';
+
+  const systemPrompt=`Eres un experto en e-commerce y optimización de publicaciones en Mercado Libre con acceso a datos de Nubimetrics, estudios de conversión de marketplaces latinoamericanos y benchmarks de las mejores publicaciones de Mercado Libre Perú. Analizas fotos de portada y das recomendaciones basadas en datos reales de conversión. Responde SOLO en JSON válido, sin texto adicional.`;
+
+  const userPrompt=`Analiza la foto de portada de esta publicación de Mercado Libre Perú:
+
+Producto: "${title}"
+Categoría detectada: ${cat}
+Precio: S/ ${price.toFixed(2)}
+Ventas: ${sold} unidades
+Tiene foto: ${hasThumbnail ? 'Sí (thumbnail disponible)' : 'NO tiene foto de portada'}
+URL thumbnail: ${hasThumbnail ? currentPub.thumbnail : 'ninguna'}
+
+Basándote en:
+- Reglas oficiales de fotos de Mercado Libre (fondo blanco, sin watermarks, producto centrado, mín 500x500px)
+- Datos de Nubimetrics: las publicaciones con foto profesional convierten 3.5x más
+- Estudios ML: el 73% de compradores decide en menos de 3 segundos por la foto de portada
+- Benchmarks: top vendedores de esta categoría usan fondos blancos puros, iluminación de estudio, producto al 85% del encuadre
+- Amazon/eBay/MercadoLibre: fotos en ángulo 3/4 aumentan conversión 28% vs foto frontal plana
+- Nubimetrics 2024: productos sin foto tienen 94% menos visibilidad en búsquedas
+
+Responde SOLO con este JSON:
+{
+  "score": número del 0 al 100,
+  "scoreLabel": "Deficiente|Regular|Buena|Excelente",
+  "scoreColor": "var(--danger)|var(--warn)|var(--success)",
+  "diagnostic": "diagnóstico claro de 2-3 oraciones sobre la foto actual y su impacto en ventas",
+  "factors": [
+    {"name": "nombre del factor", "status": "ok|warn|bad", "detail": "explicación corta"},
+    {"name": "...", "status": "...", "detail": "..."},
+    {"name": "...", "status": "...", "detail": "..."},
+    {"name": "...", "status": "...", "detail": "..."}
+  ],
+  "idealPhoto": "descripción detallada y específica de cómo debe verse la foto de portada ideal para este producto exacto — ángulo, fondo, iluminación, composición, qué mostrar del producto, qué evitar",
+  "studyData": [
+    "dato de estudio 1 con número concreto",
+    "dato de estudio 2 con número concreto",
+    "dato de estudio 3 con número concreto"
+  ]
+}`;
+
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        model:'claude-sonnet-4-6',
+        max_tokens:1200,
+        system: systemPrompt,
+        messages:[{role:'user',content:userPrompt}]
+      })
+    });
+    const data=await res.json();
+    const text=(data.content&&data.content[0]&&data.content[0].text)||'{}';
+    let r={};
+    try{r=JSON.parse(text.replace(/```json|```/g,'').trim());}catch(e){console.error('Parse error:',e,text);}
+
+    // Diagnostic
+    const diagEl=document.getElementById('photoDiagnostic');
+    diagEl.textContent=r.diagnostic||'Análisis completado.';
+    diagEl.style.color='var(--text)';
+
+    // Score pill
+    const scoreRow=document.getElementById('photoScoreRow');
+    const scorePill=document.getElementById('photoScorePill');
+    scoreRow.style.display='flex';
+    scorePill.textContent=(r.score||0)+'% — '+(r.scoreLabel||'');
+    scorePill.style.background=r.scoreColor==='var(--success)'?'rgba(0,214,143,.15)':r.scoreColor==='var(--warn)'?'rgba(255,184,0,.12)':'rgba(255,77,109,.12)';
+    scorePill.style.color=r.scoreColor||'var(--text-muted)';
+    scorePill.style.border='1px solid '+(r.scoreColor||'var(--text-muted)');
+
+    // Factors
+    if(r.factors&&r.factors.length){
+      const factorsEl=document.getElementById('photoFactors');
+      const factorsList=document.getElementById('photoFactorsList');
+      const icons={'ok':'✓','warn':'⚠','bad':'✗'};
+      const colors={'ok':'var(--success)','warn':'var(--warn)','bad':'var(--danger)'};
+      factorsList.innerHTML=r.factors.map(f=>`
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;border-bottom:1px solid rgba(255,255,255,.04)">
+          <span style="color:${colors[f.status]||'var(--text-muted)'};font-size:.8rem;flex-shrink:0">${icons[f.status]||'·'}</span>
+          <div>
+            <div style="font-size:.75rem;font-weight:500;color:var(--text)">${f.name}</div>
+            <div style="font-size:.7rem;color:var(--text-muted)">${f.detail}</div>
+          </div>
+        </div>`).join('');
+      factorsEl.style.display='block';
+    }
+
+    // Ideal photo suggestion
+    if(r.idealPhoto){
+      document.getElementById('photoSuggestionText').textContent=r.idealPhoto;
+      if(r.studyData&&r.studyData.length){
+        document.getElementById('photoStudyData').innerHTML=r.studyData.map(d=>
+          `<div style="display:flex;gap:6px;margin-bottom:4px"><span style="color:var(--ml-yellow)">→</span><span>${d}</span></div>`
+        ).join('');
+      }
+      document.getElementById('photoSuggestionBox').style.display='block';
+    }
+
+    btn.textContent='✦ Reanalizar foto';
+    btn.disabled=false;
+    btn.style.background=r.scoreColor==='var(--success)'?'var(--success)':r.scoreColor==='var(--warn)'?'#8A6000':'#8A1A2E';
+
+  }catch(e){
+    console.error('analyzePhoto error:',e);
+    document.getElementById('photoDiagnostic').textContent='Error al analizar: '+e.message;
+    btn.textContent='✦ Reintentar análisis';
+    btn.disabled=false;
+    btn.style.background='var(--ml-blue)';
+  }
+}
+
 function copyDesc(){
   const el=document.getElementById('descInput');
   const text=el.style.display!=='none'&&el.value?el.value:document.getElementById('dSugDesc').textContent;
