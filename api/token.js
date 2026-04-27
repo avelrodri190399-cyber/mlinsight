@@ -4,8 +4,7 @@ export default async function handler(req) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, x-ml-token, x-ml-method, x-action',
-    'Content-Type': 'application/json',
+    'Access-Control-Allow-Headers': 'Content-Type, x-ml-token',
   };
 
   if (req.method === 'OPTIONS') {
@@ -17,28 +16,54 @@ export default async function handler(req) {
   const mlMethod = url.searchParams.get('method') || 'GET';
   const action = url.searchParams.get('action');
 
-  // ── ANTHROPIC AI PROXY ─────────────────────────────────────────
-  if (action === 'ai') {
-    const ANTHROPIC_KEY = process.env.ANTHROPIC_API_KEY;
-    if (!ANTHROPIC_KEY) {
-      return new Response(JSON.stringify({ error: 'API key not configured' }), {
-        status: 500, headers: corsHeaders
+  // ── HUGGING FACE IMAGE GENERATION (gratis) ─────────────────────
+  if (action === 'img') {
+    const HF_KEY = process.env.HF_API_KEY;
+    if (!HF_KEY) {
+      return new Response(JSON.stringify({ error: 'HF_API_KEY not configured in Vercel' }), {
+        status: 500,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
     const body = await req.json();
-    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
+    const prompt = body.prompt || 'product photo white background';
+
+    // Usar SDXL-Turbo — rápido y gratis en HF
+    const imgRes = await fetch(
+      'https://api-inference.huggingface.co/models/stabilityai/sdxl-turbo',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${HF_KEY}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            negative_prompt: 'watermark, text, logo, blurry, dark background, shadow, person, hand, nsfw',
+            num_inference_steps: 4,
+            guidance_scale: 0,
+          }
+        }),
+      }
+    );
+
+    // HF devuelve la imagen como blob binario
+    if (!imgRes.ok) {
+      const errText = await imgRes.text();
+      return new Response(errText, {
+        status: imgRes.status,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
+    const imgBlob = await imgRes.arrayBuffer();
+    return new Response(imgBlob, {
+      status: 200,
       headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': ANTHROPIC_KEY,
-        'anthropic-version': '2023-06-01',
+        ...corsHeaders,
+        'Content-Type': 'image/png',
       },
-      body: JSON.stringify(body),
-    });
-    const data = await aiRes.json();
-    return new Response(JSON.stringify(data), {
-      status: aiRes.status,
-      headers: corsHeaders,
     });
   }
 
@@ -61,7 +86,7 @@ export default async function handler(req) {
     try { data = JSON.parse(text); } catch(e) { data = { raw: text }; }
     return new Response(JSON.stringify(data), {
       status: mlRes.status,
-      headers: corsHeaders,
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 
@@ -84,6 +109,6 @@ export default async function handler(req) {
   const data = await response.json();
   return new Response(JSON.stringify(data), {
     status: data.access_token ? 200 : 400,
-    headers: corsHeaders,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
 }
