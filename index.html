@@ -766,12 +766,18 @@ async function applyChanges(){
   const descVal=document.getElementById('descInput').value.trim();
   const sug=generateSuggestions(currentPub);
   const body={};
-  const newTitle=titleVal||sug.title;
+  // Título: usar el editado manualmente, o el sugerido, siempre máx 60 chars
+  const rawTitle=titleVal||sug.title;
+  const newTitle=rawTitle.substring(0,60).trim();
   if(newTitle&&newTitle!==currentPub.title)body.title=newTitle;
-  const newPrice=priceVal?parseFloat(priceVal):null;
-  if(newPrice&&newPrice!==parseFloat(currentPub.price))body.price=newPrice;
-  const finalDesc=descVal||document.getElementById('dSugDesc').textContent;
+  // Precio: solo si es número válido y distinto al actual
+  if(priceVal){
+    const newPrice=parseFloat(priceVal);
+    if(!isNaN(newPrice)&&newPrice>0&&newPrice!==parseFloat(currentPub.price))body.price=newPrice;
+  }
+  const finalDesc=descVal||document.getElementById('dSugDesc').textContent.trim();
   if(!Object.keys(body).length&&!finalDesc){showToast('No hay cambios para aplicar');return;}
+  console.log('Enviando a ML:', JSON.stringify(body));
   btn.textContent='Aplicando en Mercado Libre...';btn.className='btn-apply applying';
   try{
     let errors=[];
