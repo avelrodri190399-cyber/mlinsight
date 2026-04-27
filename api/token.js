@@ -16,53 +16,54 @@ export default async function handler(req) {
   const mlMethod = url.searchParams.get('method') || 'GET';
   const action = url.searchParams.get('action');
 
-  // ── HUGGING FACE IMAGE GENERATION (gratis) ─────────────────────
+  // ── HUGGING FACE IMAGE GENERATION ─────────────────────────────
   if (action === 'img') {
     const HF_KEY = process.env.HF_API_KEY;
     if (!HF_KEY) {
-      return new Response(JSON.stringify({ error: 'HF_API_KEY not configured in Vercel' }), {
+      return new Response('HF_API_KEY not configured', {
         status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
       });
     }
+
     const body = await req.json();
     const prompt = body.prompt || 'product photo white background';
 
-    // Usar SDXL-Turbo — rápido y gratis en HF
+    // Usar flux-schnell — público, sin restricciones, muy buena calidad
     const imgRes = await fetch(
-      'https://api-inference.huggingface.co/models/stabilityai/sdxl-turbo',
+      'https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell',
       {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${HF_KEY}`,
           'Content-Type': 'application/json',
+          'x-wait-for-model': 'true',
         },
         body: JSON.stringify({
           inputs: prompt,
           parameters: {
-            negative_prompt: 'watermark, text, logo, blurry, dark background, shadow, person, hand, nsfw',
             num_inference_steps: 4,
-            guidance_scale: 0,
+            width: 512,
+            height: 512,
           }
         }),
       }
     );
 
-    // HF devuelve la imagen como blob binario
     if (!imgRes.ok) {
       const errText = await imgRes.text();
       return new Response(errText, {
         status: imgRes.status,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        headers: { ...corsHeaders, 'Content-Type': 'text/plain' }
       });
     }
 
-    const imgBlob = await imgRes.arrayBuffer();
-    return new Response(imgBlob, {
+    const imgBuffer = await imgRes.arrayBuffer();
+    return new Response(imgBuffer, {
       status: 200,
       headers: {
         ...corsHeaders,
-        'Content-Type': 'image/png',
+        'Content-Type': 'image/jpeg',
       },
     });
   }
