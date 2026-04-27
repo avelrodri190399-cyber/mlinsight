@@ -374,20 +374,23 @@ async function launchApp(){
 }
 
 async function mlGet(url){
-  const res=await fetch('/api/token?path='+encodeURIComponent(url),{
-    method:'GET',
-    headers:{'x-ml-token':accessToken}
+  const res=await fetch('/api/token?path='+encodeURIComponent(url)+'&method=GET',{
+    method:'POST',
+    headers:{'x-ml-token':accessToken,'Content-Type':'application/json'},
+    body:'{}'
   });
   return res.json();
 }
 
 async function mlPut(url, body){
-  const res=await fetch('/api/token?path='+encodeURIComponent(url),{
+  const res=await fetch('/api/token?path='+encodeURIComponent(url)+'&method=PUT',{
     method:'POST',
     headers:{'x-ml-token':accessToken,'Content-Type':'application/json'},
     body:JSON.stringify(body)
   });
-  return res.json();
+  const data=await res.json();
+  console.log('mlPut response:', JSON.stringify(data));
+  return data;
 }
 
 async function fetchUserInfo(){
@@ -771,18 +774,26 @@ async function applyChanges(){
   if(!Object.keys(body).length&&!finalDesc){showToast('No hay cambios para aplicar');return;}
   btn.textContent='Aplicando en Mercado Libre...';btn.className='btn-apply applying';
   try{
+    let errors=[];
     if(Object.keys(body).length){
-      await mlPut(`/items/${currentPub.id}`, body);
+      const r=await mlPut(`/items/${currentPub.id}`, body);
+      if(r.error||r.status==='error') errors.push('Título/Precio: '+(r.message||r.error));
+      else { if(body.title)currentPub.title=body.title; if(body.price)currentPub.price=body.price; }
     }
     if(finalDesc){
-      await mlPut(`/items/${currentPub.id}/description`, {plain_text:finalDesc});
+      const r2=await mlPut(`/items/${currentPub.id}/description`, {plain_text:finalDesc});
+      if(r2.error||r2.status==='error') errors.push('Descripción: '+(r2.message||r2.error));
     }
-    if(body.title)currentPub.title=body.title;
-    if(body.price)currentPub.price=body.price;
-    btn.textContent='✓ Cambios aplicados en ML';btn.className='btn-apply applied';
-    showToast('¡Publicación actualizada en Mercado Libre!');
-    renderPubList();
-  }catch(e){btn.textContent='Error — intenta de nuevo';btn.className='btn-apply';showToast('Error: '+e.message);}
+    if(errors.length){
+      btn.textContent='Error al aplicar';btn.className='btn-apply';
+      showToast('Error: '+errors[0]);
+      console.error('ML errors:', errors);
+    } else {
+      btn.textContent='✓ Aplicado en Mercado Libre';btn.className='btn-apply applied';
+      showToast('¡Publicación actualizada en Mercado Libre!');
+      renderPubList();
+    }
+  }catch(e){btn.textContent='Error — intenta de nuevo';btn.className='btn-apply';showToast('Error: '+e.message);console.error(e);}
 }
 
 function revertChanges(){
