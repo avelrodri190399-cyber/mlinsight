@@ -11,7 +11,7 @@ export default async function handler(req, res) {
       body: new URLSearchParams({
         grant_type: 'authorization_code',
         client_id: '7038339915938205',
-        client_secret: 'ORq7EerxNwhR0txC1hZkL4pbjmzGcbQLt',
+        client_secret: 'Rq7EerxNwhR0txC1hZkL4pbjmzGcbQLt',
         code: code,
         redirect_uri: redirect_uri
       })
