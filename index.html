@@ -572,103 +572,160 @@ function buildDescription(p){
   const price=parseFloat(p.price)||0;
   const nombre=t.substring(0,50);
   
+  // Políticas ML: solo info del producto, sin datos de contacto,
+  // sin links externos, sin "oferta/promoción", precio con IGV incluido,
+  // no duplicar info del título, info relevante primero.
   const templates={
-    celular:`✅ ${nombre}
+    celular:`${nombre}
 
-📱 CARACTERÍSTICAS PRINCIPALES:
-• Pantalla de alta resolución
-• Batería de larga duración
-• Cámara de alta calidad
-• Sistema operativo actualizado
-• Memoria interna ampliable
+CARACTERÍSTICAS PRINCIPALES
+• Pantalla de alta resolución con colores nítidos
+• Batería de larga duración para todo el día
+• Cámara de alta calidad para fotos y videos
+• Sistema operativo actualizado y fluido
+• Almacenamiento interno amplio
 
-🔧 ESPECIFICACIONES:
-• Estado: Nuevo / Original
-• Garantía: 12 meses
-• Incluye: caja, cargador y accesorios
+ESPECIFICACIONES
+• Condición: Nuevo, sellado en caja original
+• Garantía: 12 meses por defectos de fábrica
+• Contenido: equipo, cargador, cable y manual
 
-🚚 ENVÍO:
-• Despacho en 24-48 horas
-• Envío a todo el Perú
+INFORMACIÓN DE ENVÍO
+• Despacho en 24 a 48 horas hábiles
+• Entrega a todo el Perú vía Mercado Envíos
 • Empaque seguro y protegido
 
-💳 FORMAS DE PAGO:
-• Tarjeta de crédito y débito
-• Yape / Plin / Transferencia
-• Contra entrega disponible
+MEDIOS DE PAGO
+• Tarjetas Visa y Mastercard (hasta en cuotas)
+• Mercado Pago
+• Transferencia bancaria y Yape
 
-⭐ Somos vendedores con años de experiencia. ¡Compra con confianza!`,
+Ante cualquier consulta adicional sobre el producto estamos disponibles para responderte.`,
 
-    tecnologia:`✅ ${nombre}
+    tecnologia:`${nombre}
 
-💻 CARACTERÍSTICAS PRINCIPALES:
-• Producto 100% original y nuevo
-• Alto rendimiento garantizado
-• Compatibilidad universal
+CARACTERÍSTICAS PRINCIPALES
+• Producto 100% original y nuevo en caja
+• Alto rendimiento y durabilidad garantizada
+• Compatibilidad amplia con distintos dispositivos
 • Materiales de primera calidad
-• Diseño ergonómico y moderno
+• Diseño ergonómico y funcional
 
-🔧 ESPECIFICACIONES TÉCNICAS:
-• Estado: Nuevo en caja
-• Garantía: 12 meses contra defectos
-• Certificación de calidad incluida
+ESPECIFICACIONES TÉCNICAS
+• Condición: Nuevo, sin uso
+• Garantía: 12 meses contra defectos de fabricación
+• Contenido del paquete: ver fotografías adjuntas
 
-🚚 ENVÍO Y ENTREGA:
-• Despacho en 24-48 horas hábiles
-• Envío seguro a todo el Perú
-• Empaque reforzado anti-golpes
+ENVÍO Y ENTREGA
+• Despacho en 24 a 48 horas hábiles
+• Entrega a todo el Perú vía Mercado Envíos
+• Empaque reforzado para protección del producto
 
-💳 MEDIOS DE PAGO:
-• Tarjetas Visa / Mastercard
-• Yape, Plin, Transferencia bancaria
-• Mercado Pago con cuotas
+MEDIOS DE PAGO
+• Tarjetas Visa y Mastercard (hasta en cuotas)
+• Mercado Pago
+• Transferencia bancaria y Yape
 
-⭐ ¡Miles de clientes satisfechos nos respaldan!`,
+Ante cualquier consulta adicional sobre el producto estamos disponibles para responderte.`,
 
-    ropa:`✅ ${nombre}
+    ropa:`${nombre}
 
-👗 CARACTERÍSTICAS:
-• Tela de alta calidad
-• Costuras reforzadas
-• Colores vivos y duraderos
-• Lavable a máquina
+CARACTERÍSTICAS
+• Confeccionado con tela de alta calidad
+• Costuras reforzadas para mayor durabilidad
+• Colores firmes al lavado
+• Apto para lavado a máquina en ciclo suave
 
-📏 TALLAS DISPONIBLES:
+TALLAS DISPONIBLES
 • S / M / L / XL / XXL
-• Consulta la guía de tallas en las fotos
+• Consulta la guía de tallas en las fotografías del producto
 
-🚚 ENVÍO:
-• Despacho en 24-48 horas
-• Envío a todo el Perú
-• Cambios y devoluciones en 7 días
+ENVÍO
+• Despacho en 24 a 48 horas hábiles
+• Entrega a todo el Perú vía Mercado Envíos
+• Cambios disponibles según políticas de Mercado Libre
 
-💳 FORMAS DE PAGO:
-• Tarjetas, Yape, Plin, Transferencia
+MEDIOS DE PAGO
+• Tarjetas Visa y Mastercard (hasta en cuotas)
+• Mercado Pago
+• Transferencia bancaria y Yape
 
-⭐ ¡Garantía de satisfacción!`,
+Ante cualquier consulta adicional sobre el producto estamos disponibles para responderte.`,
 
-    general:`✅ ${nombre}
+    hogar:`${nombre}
 
-📦 CARACTERÍSTICAS PRINCIPALES:
-• Producto original y de calidad
-• Excelentes materiales
-• Listo para usar
+CARACTERÍSTICAS PRINCIPALES
+• Material de alta calidad y resistente
+• Diseño moderno y funcional
+• Fácil instalación y mantenimiento
+• Acabados de primera calidad
+
+ESPECIFICACIONES
+• Condición: Nuevo, sin uso
+• Garantía: 6 meses contra defectos de fabricación
+• Contenido: ver fotografías adjuntas para detalles
+
+ENVÍO
+• Despacho en 24 a 48 horas hábiles
+• Entrega a todo el Perú vía Mercado Envíos
+• Empaque protegido para evitar daños en tránsito
+
+MEDIOS DE PAGO
+• Tarjetas Visa y Mastercard (hasta en cuotas)
+• Mercado Pago
+• Transferencia bancaria y Yape
+
+Ante cualquier consulta adicional sobre el producto estamos disponibles para responderte.`,
+
+    belleza:`${nombre}
+
+CARACTERÍSTICAS PRINCIPALES
+• Fórmula de alta calidad dermatológicamente testeada
+• Ingredientes seleccionados para mejores resultados
+• Apto para uso diario
+• Producto original con registro sanitario
+
+ESPECIFICACIONES
+• Condición: Nuevo, sellado
+• Contenido neto: ver etiqueta del producto
+• Fecha de vencimiento vigente
+
+ENVÍO
+• Despacho en 24 a 48 horas hábiles
+• Entrega a todo el Perú vía Mercado Envíos
+• Empaque protegido y discreto
+
+MEDIOS DE PAGO
+• Tarjetas Visa y Mastercard (hasta en cuotas)
+• Mercado Pago
+• Transferencia bancaria y Yape
+
+Ante cualquier consulta adicional sobre el producto estamos disponibles para responderte.`,
+
+    general:`${nombre}
+
+CARACTERÍSTICAS PRINCIPALES
+• Producto original y de calidad comprobada
+• Materiales seleccionados para mayor durabilidad
+• Listo para usar desde el primer momento
+• Cumple con estándares de calidad
+
+CONTENIDO DEL PAQUETE
+• Producto en perfectas condiciones
+• Accesorios según fotografías adjuntas
 • Garantía incluida
 
-✔️ INCLUYE:
-• Producto en perfectas condiciones
-• Accesorios indicados en las fotos
-• Garantía de 6 a 12 meses
+ENVÍO
+• Despacho en 24 a 48 horas hábiles
+• Entrega a todo el Perú vía Mercado Envíos
+• Empaque seguro y protegido
 
-🚚 ENVÍO:
-• Despacho en 24-48 horas hábiles
-• Envío a todo el Perú
-• Empaque protegido
+MEDIOS DE PAGO
+• Tarjetas Visa y Mastercard (hasta en cuotas)
+• Mercado Pago
+• Transferencia bancaria y Yape
 
-💳 FORMAS DE PAGO:
-• Tarjetas, Yape, Plin, Transferencia bancaria
-
-⭐ Vendedor con experiencia. ¡Compra segura!`
+Ante cualquier consulta adicional sobre el producto estamos disponibles para responderte.`
   };
   
   return templates[cat]||templates.general;
