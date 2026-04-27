@@ -246,9 +246,10 @@ body{font-family:'DM Sans',sans-serif;background:var(--ml-dark);color:var(--text
             <div class="field-label">Descripción<button class="edit-toggle" onclick="toggleField('descInput')">Editar</button></div>
             <div style="font-size:.68rem;color:var(--text-muted);margin-bottom:4px">Actual:</div>
             <div class="field-current" id="dCurDesc"></div>
-            <div style="font-size:.68rem;color:var(--success);margin-bottom:4px">Estructura sugerida:</div>
-            <div class="field-suggested" id="dSugDesc"></div>
-            <textarea class="field-input" id="descInput" rows="3" placeholder="Escribe tu propia descripción..."></textarea>
+            <div style="font-size:.68rem;color:var(--success);margin-bottom:4px">Descripción generada lista para usar:</div>
+            <div class="field-suggested" id="dSugDesc" style="white-space:pre-wrap;font-size:.75rem;max-height:200px;overflow-y:auto"></div>
+            <button onclick="copyDesc()" style="margin-top:6px;font-size:.7rem;padding:4px 10px;border:1px solid rgba(0,214,143,.3);border-radius:20px;background:transparent;color:var(--success);cursor:pointer">Copiar descripción</button>
+            <textarea class="field-input" id="descInput" rows="6" placeholder="Edita la descripción generada..."></textarea>
           </div>
         </div>
         <div class="section">
@@ -524,22 +525,176 @@ async function fetchVisits(itemId){
   }catch(e){}
 }
 
+function detectCategory(title){
+  const t=title.toLowerCase();
+  if(/celular|iphone|samsung|xiaomi|redmi|motorola|huawei|smartphone|android/.test(t)) return 'celular';
+  if(/laptop|notebook|computadora|pc|procesador|ram|ssd|disco|monitor|teclado|mouse|hdmi|usb|cable|cargador|adaptador|router|wifi|auricular|audifonos|headphone|parlante|bocina|camara|camara web|webcam|tablet|ipad|smartwatch|reloj inteligente|bateria|power bank|case|funda|protector|soporte|stand/.test(t)) return 'tecnologia';
+  if(/polo|camisa|blusa|pantalon|jean|short|vestido|falda|ropa|calzado|zapatilla|zapato|sandalia|chompa|casaca|chaqueta|terno|uniforme/.test(t)) return 'ropa';
+  if(/silla|mesa|escritorio|mueble|estante|cama|colchon|sofa|lampara|cortina|alfombra|espejo|decoracion/.test(t)) return 'hogar';
+  if(/crema|serum|shampoo|acondicionador|perfume|maquillaje|labial|base|mascarilla|protector solar|vitamina|suplemento|proteina/.test(t)) return 'belleza';
+  if(/juguete|lego|muneca|peluche|bicicleta|patines|pelota|juego de mesa/.test(t)) return 'juguetes';
+  if(/libro|cuaderno|lapiz|pluma|mochila|lonchera|utiles|escolar/.test(t)) return 'escolar';
+  return 'general';
+}
+
+function buildTitle(p){
+  const t=p.title||'';
+  const cat=detectCategory(t);
+  const price=parseFloat(p.price)||0;
+  const words=t.trim().split(/\s+/);
+  
+  const keysByCategory={
+    celular:['Desbloqueado','Dual SIM','NFC','5G','Nuevo','Original'],
+    tecnologia:['Original','Nuevo','Garantía','Compatible','Pro','Plus'],
+    ropa:['Unisex','Premium','Nuevo','Talla S-XXL','Calidad'],
+    hogar:['Moderno','Premium','Resistente','Nuevo','Set'],
+    belleza:['Natural','Hidratante','Original','Sin Parabenos','Premium'],
+    juguetes:['Educativo','Original','Nuevo','Seguro','Premium'],
+    escolar:['Nuevo','Premium','Set','Completo','Original'],
+    general:['Original','Nuevo','Premium','Garantía','Calidad']
+  };
+  
+  const extras=keysByCategory[cat]||keysByCategory.general;
+  let suggested=t;
+  for(const kw of extras){
+    if(!t.toLowerCase().includes(kw.toLowerCase())){
+      const candidate=suggested+' '+kw;
+      if(candidate.length<=60){suggested=candidate;}
+      else break;
+    }
+  }
+  return suggested.substring(0,60);
+}
+
+function buildDescription(p){
+  const t=p.title||'';
+  const cat=detectCategory(t);
+  const price=parseFloat(p.price)||0;
+  const nombre=t.substring(0,50);
+  
+  const templates={
+    celular:`✅ ${nombre}
+
+📱 CARACTERÍSTICAS PRINCIPALES:
+• Pantalla de alta resolución
+• Batería de larga duración
+• Cámara de alta calidad
+• Sistema operativo actualizado
+• Memoria interna ampliable
+
+🔧 ESPECIFICACIONES:
+• Estado: Nuevo / Original
+• Garantía: 12 meses
+• Incluye: caja, cargador y accesorios
+
+🚚 ENVÍO:
+• Despacho en 24-48 horas
+• Envío a todo el Perú
+• Empaque seguro y protegido
+
+💳 FORMAS DE PAGO:
+• Tarjeta de crédito y débito
+• Yape / Plin / Transferencia
+• Contra entrega disponible
+
+⭐ Somos vendedores con años de experiencia. ¡Compra con confianza!`,
+
+    tecnologia:`✅ ${nombre}
+
+💻 CARACTERÍSTICAS PRINCIPALES:
+• Producto 100% original y nuevo
+• Alto rendimiento garantizado
+• Compatibilidad universal
+• Materiales de primera calidad
+• Diseño ergonómico y moderno
+
+🔧 ESPECIFICACIONES TÉCNICAS:
+• Estado: Nuevo en caja
+• Garantía: 12 meses contra defectos
+• Certificación de calidad incluida
+
+🚚 ENVÍO Y ENTREGA:
+• Despacho en 24-48 horas hábiles
+• Envío seguro a todo el Perú
+• Empaque reforzado anti-golpes
+
+💳 MEDIOS DE PAGO:
+• Tarjetas Visa / Mastercard
+• Yape, Plin, Transferencia bancaria
+• Mercado Pago con cuotas
+
+⭐ ¡Miles de clientes satisfechos nos respaldan!`,
+
+    ropa:`✅ ${nombre}
+
+👗 CARACTERÍSTICAS:
+• Tela de alta calidad
+• Costuras reforzadas
+• Colores vivos y duraderos
+• Lavable a máquina
+
+📏 TALLAS DISPONIBLES:
+• S / M / L / XL / XXL
+• Consulta la guía de tallas en las fotos
+
+🚚 ENVÍO:
+• Despacho en 24-48 horas
+• Envío a todo el Perú
+• Cambios y devoluciones en 7 días
+
+💳 FORMAS DE PAGO:
+• Tarjetas, Yape, Plin, Transferencia
+
+⭐ ¡Garantía de satisfacción!`,
+
+    general:`✅ ${nombre}
+
+📦 CARACTERÍSTICAS PRINCIPALES:
+• Producto original y de calidad
+• Excelentes materiales
+• Listo para usar
+• Garantía incluida
+
+✔️ INCLUYE:
+• Producto en perfectas condiciones
+• Accesorios indicados en las fotos
+• Garantía de 6 a 12 meses
+
+🚚 ENVÍO:
+• Despacho en 24-48 horas hábiles
+• Envío a todo el Perú
+• Empaque protegido
+
+💳 FORMAS DE PAGO:
+• Tarjetas, Yape, Plin, Transferencia bancaria
+
+⭐ Vendedor con experiencia. ¡Compra segura!`
+  };
+  
+  return templates[cat]||templates.general;
+}
+
 function generateSuggestions(p){
-  const title=p.title||'';const price=parseFloat(p.price)||0;const tl=title.length;
-  const hasSize=/talla|tamaño|size|\d+ml|\d+gr|\d+cm|\d+-\d+/i.test(title);
-  const hasBrand=/samsung|apple|xiaomi|lg|sony|nike|adidas|asus|hp|dell|lenovo/i.test(title);
-  const titleScore=Math.min(94,30+(tl>50?30:tl>30?20:5)+(hasSize?15:0)+(hasBrand?10:0));
+  const title=p.title||'';
+  const price=parseFloat(p.price)||0;
+  const tl=title.length;
+  const cat=detectCategory(title);
+  const hasBrand=/samsung|apple|xiaomi|lg|sony|nike|adidas|asus|hp|dell|lenovo|motorola|huawei/i.test(title);
+  const titleScore=Math.min(94,35+(tl>=50?25:tl>=35?15:tl>=20?8:2)+(hasBrand?10:0)+(tl<=60?5:0));
   const priceScore=70,descScore=35,photoScore=p.thumbnail?65:20,repScore=80,shipScore=75;
-  const sugTitle=(title+(hasSize?'':' Tallas Disponibles')+(title.toLowerCase().includes('envio')?'':'')).substring(0,80);
+  const sugTitle=buildTitle(p);
   const sugPrice=`S/ ${(price*0.88).toFixed(2)} – S/ ${(price*0.95).toFixed(2)} (rango estimado competitivo)`;
+  const sugDesc=buildDescription(p);
   const issues=[titleScore<80,priceScore<80,descScore<80,photoScore<80].filter(Boolean).length;
+  const catLabel={celular:'Celulares',tecnologia:'Tecnología',ropa:'Ropa',hogar:'Hogar',belleza:'Belleza',juguetes:'Juguetes',escolar:'Útiles escolares',general:'General'}[cat]||'General';
   const plan=[];
-  if(titleScore<80)plan.push({color:'var(--danger)',text:`<strong>Título:</strong> Solo ${tl} caracteres. Agrega talla, característica principal y compatibilidad.`});
-  if(descScore<80)plan.push({color:'var(--danger)',text:'<strong>Descripción:</strong> Agrega especificaciones, garantía, tallas y envío.'});
-  if(priceScore<80)plan.push({color:'var(--warn)',text:`<strong>Precio:</strong> S/ ${price.toFixed(2)} puede estar por encima del rango óptimo.`});
-  if(photoScore<80)plan.push({color:'var(--warn)',text:'<strong>Fotos:</strong> Agrega mínimo 6: frente, lateral, detalle, uso y empaque.'});
-  plan.push({color:'var(--success)',text:'<strong>Reputación:</strong> Responde rápido para mejorar tu posición en búsquedas.'});
-  return{issues,title:sugTitle,price:sugPrice,desc:'Características + Tallas disponibles + Material + Garantía + Envío + Marca',
+  if(tl>60)plan.push({color:'var(--danger)',text:`<strong>Título muy largo:</strong> Tiene ${tl} caracteres. ML permite máximo 60. Usa el título sugerido.`});
+  else if(titleScore<80)plan.push({color:'var(--danger)',text:`<strong>Título:</strong> Solo ${tl} caracteres. Agrega palabras clave de la categoría ${catLabel}.`});
+  plan.push({color:'var(--danger)',text:'<strong>Descripción:</strong> La descripción generada está lista para copiar y pegar en ML.'});
+  if(priceScore<80)plan.push({color:'var(--warn)',text:`<strong>Precio:</strong> S/ ${price.toFixed(2)} puede estar por encima del rango óptimo. Revisa competidores.`});
+  if(photoScore<80)plan.push({color:'var(--warn)',text:'<strong>Fotos:</strong> Agrega mínimo 6 fotos: frente, lateral, detalle, uso real y empaque.'});
+  plan.push({color:'var(--success)',text:'<strong>Reputación:</strong> Responde preguntas en menos de 1 hora para mejorar posición.'});
+  return{issues,title:sugTitle,price:sugPrice,desc:sugDesc,cat:catLabel,
     factors:[{name:'Título (palabras clave)',you:titleScore,top:94},{name:'Precio competitivo',you:priceScore,top:90},{name:'Descripción',you:descScore,top:92},{name:'Fotos',you:photoScore,top:91},{name:'Reputación',you:repScore,top:96},{name:'Envío',you:shipScore,top:88}],plan};
 }
 
@@ -555,14 +710,15 @@ async function applyChanges(){
   if(newTitle&&newTitle!==currentPub.title)body.title=newTitle;
   const newPrice=priceVal?parseFloat(priceVal):null;
   if(newPrice&&newPrice!==parseFloat(currentPub.price))body.price=newPrice;
-  if(!Object.keys(body).length&&!descVal){showToast('No hay cambios para aplicar');return;}
+  const finalDesc=descVal||document.getElementById('dSugDesc').textContent;
+  if(!Object.keys(body).length&&!finalDesc){showToast('No hay cambios para aplicar');return;}
   btn.textContent='Aplicando en Mercado Libre...';btn.className='btn-apply applying';
   try{
     if(Object.keys(body).length){
       await mlPut(`/items/${currentPub.id}`, body);
     }
-    if(descVal){
-      await mlPut(`/items/${currentPub.id}/description`, {plain_text:descVal});
+    if(finalDesc){
+      await mlPut(`/items/${currentPub.id}/description`, {plain_text:finalDesc});
     }
     if(body.title)currentPub.title=body.title;
     if(body.price)currentPub.price=body.price;
@@ -584,6 +740,12 @@ function closeSidebar(){document.getElementById('sidebar').classList.remove('ope
 function mobileTab(el,tab){document.querySelectorAll('.mobile-tab').forEach(t=>t.classList.remove('active'));el.classList.add('active');if(tab==='list')toggleSidebar();else closeSidebar();}
 function logout(){accessToken=null;currentPub=null;allPubs=[];localStorage.removeItem('ml_token');localStorage.removeItem('ml_token_exp');document.getElementById('app').classList.remove('visible');document.getElementById('loginScreen').style.display='flex';showToast('Sesión cerrada');}
 async function syncPubs(){showToast('Sincronizando...');await fetchPublications();}
+function copyDesc(){
+  const el=document.getElementById('descInput');
+  const text=el.style.display!=='none'&&el.value?el.value:document.getElementById('dSugDesc').textContent;
+  navigator.clipboard.writeText(text).then(()=>showToast('Descripción copiada'));
+}
+
 function showToast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2800);}
 
 (async function init(){
