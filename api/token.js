@@ -3,8 +3,8 @@ export const config = { runtime: 'edge' };
 export default async function handler(req) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Methods': 'POST, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type',
+    'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
+    'Access-Control-Allow-Headers': 'Content-Type, x-ml-token, x-ml-method',
     'Content-Type': 'application/json',
   };
 
@@ -14,23 +14,34 @@ export default async function handler(req) {
 
   const url = new URL(req.url);
   const path = url.searchParams.get('path');
+  const mlMethod = url.searchParams.get('method') || 'GET';
 
-  // ML API proxy
+  // ── PROXY hacia ML API ──────────────────────────────────────────
   if (path) {
     const token = req.headers.get('x-ml-token');
+    let body = undefined;
+    if (mlMethod === 'PUT') {
+      body = await req.text();
+    }
     const mlRes = await fetch('https://api.mercadolibre.com' + path, {
-      method: req.method === 'POST' ? 'PUT' : 'GET',
+      method: mlMethod,
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: req.method === 'POST' ? req.body : undefined,
+      body: body,
     });
-    const data = await mlRes.json();
-    return new Response(JSON.stringify(data), { status: 200, headers: corsHeaders });
+    const text = await mlRes.text();
+    let data = {};
+    try { data = JSON.parse(text); } catch(e) { data = { raw: text }; }
+    return new Response(JSON.stringify(data), {
+      status: mlRes.status,
+      headers: corsHeaders
+    });
   }
 
-  // Token exchange
+  // ── TOKEN EXCHANGE ──────────────────────────────────────────────
   const { code, redirect_uri, code_verifier } = await req.json();
   const params = new URLSearchParams({
     grant_type: 'authorization_code',
