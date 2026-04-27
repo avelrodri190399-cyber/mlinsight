@@ -300,6 +300,29 @@ body{font-family:'DM Sans',sans-serif;background:var(--ml-dark);color:var(--text
                 <div style="font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Estudios de conversión — por qué importa la portada</div>
                 <div id="photoStudyData" style="font-size:.75rem;color:var(--text-muted);line-height:1.8"></div>
               </div>
+              <!-- Generar imagen con IA -->
+              <div style="margin-top:1rem">
+                <button onclick="generateCoverImage()" id="genImgBtn"
+                  style="width:100%;padding:10px;border:1px solid rgba(255,230,0,.3);border-radius:var(--radius-sm);background:rgba(255,230,0,.06);color:var(--ml-yellow);font-family:'Syne',sans-serif;font-size:.85rem;font-weight:600;cursor:pointer;margin-bottom:.75rem">
+                  ✦ Generar imagen de portada ideal con IA
+                </button>
+                <div id="genImgResult" style="display:none">
+                  <div style="font-size:.65rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:6px">Imagen de referencia generada</div>
+                  <div style="display:grid;grid-template-columns:1fr 1fr;gap:.5rem">
+                    <div>
+                      <div style="font-size:.65rem;color:var(--text-muted);margin-bottom:4px">Tu portada actual</div>
+                      <div id="beforeImg" style="width:100%;aspect-ratio:1;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid rgba(255,255,255,.08);overflow:hidden;display:flex;align-items:center;justify-content:center;font-size:2rem">📦</div>
+                    </div>
+                    <div>
+                      <div style="font-size:.65rem;color:var(--success);margin-bottom:4px">Portada ideal generada</div>
+                      <div id="afterImg" style="width:100%;aspect-ratio:1;background:var(--surface2);border-radius:var(--radius-sm);border:1px solid rgba(0,214,143,.2);overflow:hidden;display:flex;align-items:center;justify-content:center">
+                        <div class="loading-dots"><span></span><span></span><span></span></div>
+                      </div>
+                    </div>
+                  </div>
+                  <div id="genImgNote" style="font-size:.7rem;color:var(--text-muted);margin-top:6px;line-height:1.5"></div>
+                </div>
+              </div>
             </div>
 
             <button onclick="analyzePhoto()" id="analyzePhotoBtn"
@@ -1020,6 +1043,69 @@ function analyzePhoto(){
     btn.disabled=false;
     btn.style.background=scoreColor==='var(--success)'?'#0A5C3A':scoreColor==='var(--warn)'?'#6B5000':'#6B0A1A';
   },800);
+}
+
+async function generateCoverImage(){
+  if(!currentPub) return;
+  const btn=document.getElementById('genImgBtn');
+  const result=document.getElementById('genImgResult');
+  const afterBox=document.getElementById('afterImg');
+  const noteEl=document.getElementById('genImgNote');
+  const beforeBox=document.getElementById('beforeImg');
+
+  btn.textContent='Generando imagen...';
+  btn.disabled=true;
+  result.style.display='block';
+
+  // Mostrar foto ANTES (actual)
+  if(currentPub.thumbnail&&!currentPub.thumbnail.includes('noimg')){
+    beforeBox.innerHTML=`<img src="${currentPub.thumbnail}" style="width:100%;height:100%;object-fit:cover">`;
+  } else {
+    beforeBox.innerHTML='<div style="color:var(--text-muted);font-size:.7rem;text-align:center;padding:1rem">Sin foto actual</div>';
+  }
+
+  afterBox.innerHTML='<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:6px"><div class="loading-dots"><span></span><span></span><span></span></div><div style="font-size:.65rem;color:var(--text-muted)">Generando...</div></div>';
+
+  const cat=detectCategory(currentPub.title||'');
+  const name=(currentPub.title||'product').substring(0,50);
+
+  // Prompt optimizado por categoría siguiendo reglas ML
+  const prompts={
+    celular:`${name}, professional e-commerce product photo, pure white background, 3/4 angle view, screen turned on showing interface, studio lighting, no shadows, sharp focus, product fills 85% of frame, no watermarks, no text overlay, high resolution`,
+    tecnologia:`${name}, professional e-commerce product photo, pure white background, 3/4 angle view, all ports visible, studio lighting, no shadows, sharp focus, product fills 85% of frame, no watermarks, no text overlay, high resolution`,
+    ropa:`${name}, professional e-commerce fashion photo, white background, flat lay or mannequin, perfectly ironed, uniform soft lighting, no shadows, true colors no filter, product fills 80% of frame, no watermarks`,
+    hogar:`${name}, professional e-commerce product photo, pure white background, centered front view showing dimensions, studio lighting, no shadows, product fills 85% of frame, no watermarks, no text overlay`,
+    belleza:`${name}, professional e-commerce beauty product photo, pure white background, front label clearly visible, soft studio lighting, no reflections, product fills 80% of frame, no watermarks, no text overlay`,
+    general:`${name}, professional e-commerce product photo, pure white background, centered 3/4 angle, studio lighting, no shadows, sharp focus, product fills 85% of frame, no watermarks, no text overlay, high resolution`
+  };
+
+  const prompt=prompts[cat]||prompts.general;
+
+  try{
+    const res=await fetch('/api/token?action=img',{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({ prompt })
+    });
+
+    if(!res.ok){
+      const err=await res.text();
+      throw new Error('Error generando imagen: '+err.substring(0,100));
+    }
+
+    // Hugging Face devuelve la imagen directamente como blob
+    const blob=await res.blob();
+    const imgUrl=URL.createObjectURL(blob);
+    afterBox.innerHTML=`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover">`;
+    noteEl.textContent='Imagen generada con IA — úsala como referencia para tomar o editar tu foto de portada real.';
+    btn.textContent='✦ Regenerar imagen';
+  }catch(e){
+    console.error('generateCoverImage error:',e);
+    afterBox.innerHTML=`<div style="padding:.75rem;font-size:.7rem;color:var(--danger);text-align:center">${e.message}</div>`;
+    noteEl.textContent='';
+    btn.textContent='✦ Reintentar';
+  }
+  btn.disabled=false;
 }
 
 function copyDesc(){
