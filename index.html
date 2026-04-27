@@ -404,12 +404,25 @@ async function fetchPublications(){
   document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem"><div class="loading-dots" style="justify-content:center;margin-bottom:.5rem"><span></span><span></span><span></span></div>Cargando publicaciones...</div>';
   try{
     const userId=userInfo.id;
-    const searchRes=await mlGet(`/users/${userId}/items/search?status=active&limit=50`);
-    const ids=searchRes.results||[];
-    if(!ids.length){document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">No tienes publicaciones activas.</div>';return;}
+    // Paginar todas las publicaciones de 50 en 50
+    let allIds=[];
+    let offset=0;
+    while(true){
+      const page=await mlGet(`/users/${userId}/items/search?limit=50&offset=${offset}`);
+      const ids=page.results||[];
+      allIds=[...allIds,...ids];
+      const total=(page.paging&&page.paging.total)||0;
+      if(!ids.length||allIds.length>=total||ids.length<50) break;
+      offset+=50;
+    }
+    console.log('Total IDs encontrados:', allIds.length);
+    if(!allIds.length){
+      document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">No se encontraron publicaciones.</div>';
+      return;
+    }
     allPubs=[];
-    for(let i=0;i<ids.length;i+=20){
-      const batch=ids.slice(i,i+20);
+    for(let i=0;i<allIds.length;i+=20){
+      const batch=allIds.slice(i,i+20);
       const res=await mlGet(`/items?ids=${batch.join(',')}&attributes=id,title,price,thumbnail,status,available_quantity,sold_quantity`);
       if(Array.isArray(res))res.forEach(r=>{if(r.code===200&&r.body)allPubs.push(r.body);});
     }
