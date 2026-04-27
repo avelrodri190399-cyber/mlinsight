@@ -4,17 +4,14 @@ export default async function handler(req, res) {
   const { code, redirect_uri } = req.body;
   if (!code) return res.status(400).json({ error: 'Missing code' });
 
-  const CLIENT_ID = '7038339915938205';
-  const CLIENT_SECRET = 'ORq7EerxNwhR0txC1hZkL4pbjmzGcbQLt';
-
   try {
     const response = await fetch('https://api.mercadolibre.com/oauth/token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({
         grant_type: 'authorization_code',
-        client_id: CLIENT_ID,
-        client_secret: CLIENT_SECRET,
+        client_id: '7038339915938205',
+        client_secret: 'ORq7EerxNwhR0txC1hZkL4pbjmzGcbQLt',
         code: code,
         redirect_uri: redirect_uri
       })
