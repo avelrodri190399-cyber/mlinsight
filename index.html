@@ -373,7 +373,19 @@ async function launchApp(){
 }
 
 async function mlGet(url){
-  const res=await fetch('https://api.mercadolibre.com'+url,{headers:{'Authorization':`Bearer ${accessToken}`}});
+  const res=await fetch('/api/token?path='+encodeURIComponent(url),{
+    method:'GET',
+    headers:{'x-ml-token':accessToken}
+  });
+  return res.json();
+}
+
+async function mlPut(url, body){
+  const res=await fetch('/api/token?path='+encodeURIComponent(url),{
+    method:'POST',
+    headers:{'x-ml-token':accessToken,'Content-Type':'application/json'},
+    body:JSON.stringify(body)
+  });
   return res.json();
 }
 
@@ -392,14 +404,9 @@ async function fetchPublications(){
   document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem"><div class="loading-dots" style="justify-content:center;margin-bottom:.5rem"><span></span><span></span><span></span></div>Cargando publicaciones...</div>';
   try{
     const userId=userInfo.id;
-    const searchRes=await mlGet(`/users/${userId}/items/search?limit=50`);
-    console.log('searchRes:', JSON.stringify(searchRes));
+    const searchRes=await mlGet(`/users/${userId}/items/search?status=active&limit=50`);
     const ids=searchRes.results||[];
-    if(!ids.length){
-      const msg=searchRes.message||searchRes.error||'Sin publicaciones';
-      document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">'+msg+'</div>';
-      return;
-    }
+    if(!ids.length){document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--text-muted);font-size:.8rem">No tienes publicaciones activas.</div>';return;}
     allPubs=[];
     for(let i=0;i<ids.length;i+=20){
       const batch=ids.slice(i,i+20);
@@ -409,8 +416,7 @@ async function fetchPublications(){
     renderPubList();
     showToast(`${allPubs.length} publicaciones cargadas`);
   }catch(e){
-    console.error('fetchPublications error:', e);
-    document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--danger);font-size:.8rem">Error: '+e.message+'</div>';
+    document.getElementById('pubList').innerHTML='<div style="padding:1rem;text-align:center;color:var(--danger);font-size:.8rem">Error al cargar. Toca Sync.</div>';
   }
 }
 
@@ -540,10 +546,10 @@ async function applyChanges(){
   btn.textContent='Aplicando en Mercado Libre...';btn.className='btn-apply applying';
   try{
     if(Object.keys(body).length){
-      await fetch(`https://api.mercadolibre.com/items/${currentPub.id}`,{method:'PUT',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify(body)});
+      await mlPut(`/items/${currentPub.id}`, body);
     }
     if(descVal){
-      await fetch(`https://api.mercadolibre.com/items/${currentPub.id}/description`,{method:'PUT',headers:{'Authorization':`Bearer ${accessToken}`,'Content-Type':'application/json'},body:JSON.stringify({plain_text:descVal})});
+      await mlPut(`/items/${currentPub.id}/description`, {plain_text:descVal});
     }
     if(body.title)currentPub.title=body.title;
     if(body.price)currentPub.price=body.price;
