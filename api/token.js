@@ -4,7 +4,7 @@ export default async function handler(req) {
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, OPTIONS',
-    'Access-Control-Allow-Headers': 'Content-Type, x-ml-token, x-ml-method',
+    'Access-Control-Allow-Headers': 'Content-Type, x-ml-token, x-ml-method, x-action',
     'Content-Type': 'application/json',
   };
 
@@ -15,14 +15,32 @@ export default async function handler(req) {
   const url = new URL(req.url);
   const path = url.searchParams.get('path');
   const mlMethod = url.searchParams.get('method') || 'GET';
+  const action = url.searchParams.get('action');
 
-  // ── PROXY hacia ML API ──────────────────────────────────────────
+  // ── ANTHROPIC AI PROXY ─────────────────────────────────────────
+  if (action === 'ai') {
+    const body = await req.json();
+    const aiRes = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY || '',
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify(body),
+    });
+    const data = await aiRes.json();
+    return new Response(JSON.stringify(data), {
+      status: aiRes.status,
+      headers: corsHeaders,
+    });
+  }
+
+  // ── ML API PROXY ───────────────────────────────────────────────
   if (path) {
     const token = req.headers.get('x-ml-token');
     let body = undefined;
-    if (mlMethod === 'PUT') {
-      body = await req.text();
-    }
+    if (mlMethod === 'PUT') body = await req.text();
     const mlRes = await fetch('https://api.mercadolibre.com' + path, {
       method: mlMethod,
       headers: {
@@ -30,18 +48,18 @@ export default async function handler(req) {
         'Content-Type': 'application/json',
         'Accept': 'application/json',
       },
-      body: body,
+      body,
     });
     const text = await mlRes.text();
     let data = {};
     try { data = JSON.parse(text); } catch(e) { data = { raw: text }; }
     return new Response(JSON.stringify(data), {
       status: mlRes.status,
-      headers: corsHeaders
+      headers: corsHeaders,
     });
   }
 
-  // ── TOKEN EXCHANGE ──────────────────────────────────────────────
+  // ── TOKEN EXCHANGE ─────────────────────────────────────────────
   const { code, redirect_uri, code_verifier } = await req.json();
   const params = new URLSearchParams({
     grant_type: 'authorization_code',
