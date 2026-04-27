@@ -974,9 +974,21 @@ Responde SOLO con este JSON:
       })
     });
     const data=await res.json();
+    console.log('AI raw response:', JSON.stringify(data));
     const text=(data.content&&data.content[0]&&data.content[0].text)||'{}';
+    console.log('AI text:', text);
     let r={};
-    try{r=JSON.parse(text.replace(/```json|```/g,'').trim());}catch(e){console.error('Parse error:',e,text);}
+    try{
+      // Intentar parsear directamente
+      const clean=text.replace(/```json/g,'').replace(/```/g,'').trim();
+      // Buscar primer { y último }
+      const start=clean.indexOf('{');
+      const end=clean.lastIndexOf('}');
+      if(start>=0&&end>=0){
+        r=JSON.parse(clean.substring(start,end+1));
+      }
+    }catch(e){console.error('Parse error:',e,text);}
+    console.log('Parsed result:', JSON.stringify(r));
 
     // Diagnostic
     const diagEl=document.getElementById('photoDiagnostic');
