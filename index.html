@@ -1082,23 +1082,28 @@ async function generateCoverImage(){
   const prompt=prompts[cat]||prompts.general;
 
   try{
-    const res=await fetch('/api/token?action=img',{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({ prompt })
-    });
+    // Pollinations.ai — 100% gratis, sin API key, sin registro
+    const encodedPrompt=encodeURIComponent(prompt);
+    const seed=Math.floor(Math.random()*99999);
+    const imgUrl=`https://image.pollinations.ai/prompt/${encodedPrompt}?width=512&height=512&seed=${seed}&nologo=true&enhance=true`;
 
-    if(!res.ok){
-      const err=await res.text();
-      throw new Error('Error generando imagen: '+err.substring(0,100));
-    }
-
-    // Hugging Face devuelve la imagen directamente como blob
-    const blob=await res.blob();
-    const imgUrl=URL.createObjectURL(blob);
-    afterBox.innerHTML=`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover">`;
-    noteEl.textContent='Imagen generada con IA — úsala como referencia para tomar o editar tu foto de portada real.';
-    btn.textContent='✦ Regenerar imagen';
+    // Cargar imagen directamente
+    const img=new Image();
+    img.crossOrigin='anonymous';
+    img.onload=()=>{
+      afterBox.innerHTML=`<img src="${imgUrl}" style="width:100%;height:100%;object-fit:cover">`;
+      noteEl.textContent='Imagen generada con IA — úsala como referencia visual para tomar o editar tu foto de portada real.';
+      btn.textContent='✦ Regenerar imagen';
+      btn.disabled=false;
+    };
+    img.onerror=()=>{
+      afterBox.innerHTML='<div style="padding:.75rem;font-size:.7rem;color:var(--danger);text-align:center">Error al cargar imagen. Intenta de nuevo.</div>';
+      btn.textContent='✦ Reintentar';
+      btn.disabled=false;
+    };
+    img.src=imgUrl;
+    // Retornar temprano — el resultado se maneja en onload/onerror
+    return;
   }catch(e){
     console.error('generateCoverImage error:',e);
     afterBox.innerHTML=`<div style="padding:.75rem;font-size:.7rem;color:var(--danger);text-align:center">${e.message}</div>`;
